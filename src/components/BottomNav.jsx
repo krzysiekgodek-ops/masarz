@@ -10,6 +10,10 @@ const TABS = [
 
 const BottomNav = ({ activeTab, setActiveTab, user, setIsAuthModalOpen }) => {
   const handleTab = (id) => {
+    if (id === 'home') {
+      window.open('https://www.ebra.pl', '_self');
+      return;
+    }
     if ((id === 'my' || id === 'account') && !user) {
       setIsAuthModalOpen(true);
       return;
