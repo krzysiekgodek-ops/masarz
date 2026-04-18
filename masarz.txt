@@ -1,0 +1,1282 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, query, where, addDoc, serverTimestamp, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import DOMPurify from 'dompurify';
+import {
+  X, Plus, Printer, Edit3, Hash, Zap, Save, Upload,
+  Sparkles, ChefHat, Clock, FileText, BookOpen, Lock, User, Trash2, ShieldCheck,
+  CheckCircle2, LayoutDashboard, Tag, Megaphone, Star, Power,
+  Home, Heart, ArrowLeft, Package,
+  Users, BarChart2, Shield, Eye, Ban, ExternalLink, Link2, ImageIcon, FileIcon
+} from 'lucide-react';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDgwnYBDAK9hw4AwmUGl0kIRT7PbomI9Kc",
+  authDomain: "masarski-pro-v2.firebaseapp.com",
+  projectId: "masarski-pro-v2",
+  storageBucket: "masarski-pro-v2.firebasestorage.app",
+  messagingSenderId: "704198423857",
+  appId: "1:704198423857:web:c008416788a064a65cec10"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const SUPER_ROOT = "krzysiekgodek@gmail.com";
+const MYDEVIL_URL = "https://www.masarz.ebra.pl/upload_image.php";
+
+const DEFAULT_PLANS = {
+  food: { free: { name: 'Free', limit: 2, price: '0 zł' }, mini: { name: 'Mini', limit: 15, price: '15 zł / rok' }, midi: { name: 'Midi', limit: 30, price: '25 zł / rok' }, max: { name: 'Max', limit: 100, price: '40 zł / rok' } },
+  tech: { free: { name: 'Free', limit: 2, price: '0 zł' }, mini: { name: 'Mini', limit: 15, price: '10 zł netto / msc' }, midi: { name: 'Midi', limit: 30, price: '15 zł netto / msc' }, max: { name: 'Max', limit: 9999, price: '25 zł netto / msc' } }
+};
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [recipes, setRecipes] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [ads, setAds] = useState([]);
+  const [plans, setPlans] = useState(null);
+
+  const [activeTab, setActiveTab] = useState('home');
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [adminSubTab, setAdminSubTab] = useState('users');
+  const [allUserRecipes, setAllUserRecipes] = useState([]);
+  const [modFilterUser, setModFilterUser] = useState('');
+  const [selectedModRecipe, setSelectedModRecipe] = useState(null);
+  const [newBannerForm, setNewBannerForm] = useState({ content: '', imageUrl: '', pdfUrl: '', linkUrl: '', active: true });
+  const [showBannerModal, setShowBannerModal] = useState(false);
+  const [isBannerUploading, setIsBannerUploading] = useState(false);
+
+  const [selectedCategory, setSelectedCategory] = useState('Wszystkie');
+  const [selectedKey, setSelectedKey] = useState('');
+  const [totalTarget, setTotalTarget] = useState(10);
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+
+  const [formRecipe, setFormRecipe] = useState({
+    name: '', category: '',
+    meats: [{ name: '', val: 0, grinding: '' }],
+    spices: [{ name: '', perKg: 0, unit: 'g' }],
+    tech: '', imageUrl: ''
+  });
+
+  // --- DERIVED STATE ---
+  const adminRecipes = useMemo(() => Object.values(recipes).filter(r => r.ownerId === 'ADMIN'), [recipes]);
+  const myRecipes = useMemo(() => Object.values(recipes).filter(r => r.ownerId === user?.uid), [recipes, user]);
+  const favoriteIds = userProfile?.favorites || [];
+  const favoriteRecipes = useMemo(() => adminRecipes.filter(r => favoriteIds.includes(r.id)), [adminRecipes, favoriteIds]);
+
+  const effectivePlan = userProfile?.isTrialActive ? 'max' : (userProfile?.plan || 'free');
+  const planData = plans ? plans.food[effectivePlan] : DEFAULT_PLANS.food[effectivePlan];
+  const recipeLimit = planData?.limit || 2;
+  const canAddRecipe = myRecipes.length < recipeLimit;
+
+  // --- EFFECTS ---
+  useEffect(() => {
+    const unsubPricing = onSnapshot(doc(db, 'settings', 'pricing'), (s) => {
+      if (s.exists()) setPlans(s.data());
+      else setDoc(doc(db, 'settings', 'pricing'), DEFAULT_PLANS);
+    });
+
+    const unsubAuth = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        setIsAuthModalOpen(false);
+        const userRef = doc(db, 'users', u.uid);
+        const userSnap = await getDoc(userRef);
+        let profileData;
+        if (userSnap.exists()) {
+          profileData = userSnap.data();
+        } else {
+          profileData = { email: u.email || 'Użytkownik', plan: 'free', tools: ['masarski'], favorites: [], createdAt: new Date().toISOString(), isAdmin: u.email === SUPER_ROOT };
+          await setDoc(userRef, profileData);
+        }
+        if (u.email === SUPER_ROOT) profileData.isAdmin = true;
+        profileData.isTrialActive = Math.floor((new Date() - new Date(profileData.createdAt)) / 86400000) <= 21;
+        if (!profileData.favorites) profileData.favorites = [];
+        setUserProfile(profileData);
+      } else {
+        setUserProfile(null);
+        setActiveTab('home');
+        setShowCalculator(false);
+      }
+    });
+
+    return () => { unsubPricing(); unsubAuth(); };
+  }, []);
+
+  useEffect(() => {
+    if (!userProfile?.isAdmin) return;
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+      setAllUsers(snap.docs.map(d => ({ ...d.data(), id: d.id, tools: d.data().tools || ['masarski'] })));
+    });
+    const unsubAds = onSnapshot(collection(db, 'ads'), (snap) => {
+      setAds(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    });
+    const unsubAllRecipes = onSnapshot(collection(db, 'recipes'), (snap) => {
+      setAllUserRecipes(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    });
+    return () => { unsubUsers(); unsubAds(); unsubAllRecipes(); };
+  }, [userProfile?.isAdmin]);
+
+  useEffect(() => {
+    const ownerIds = user ? ['ADMIN', user.uid] : ['ADMIN'];
+    const q = query(collection(db, 'recipes'), where('ownerId', 'in', ownerIds));
+    const unsubRecipes = onSnapshot(q, (snapshot) => {
+      const docs = {};
+      snapshot.forEach(d => docs[d.id] = { ...d.data(), id: d.id });
+      setRecipes(docs);
+    });
+    const unsubCats = onSnapshot(collection(db, 'categories'), (snap) => {
+      setCategories(snap.docs.map(d => d.data().name).sort());
+    });
+    return () => { unsubRecipes(); unsubCats(); };
+  }, [user]);
+
+  // --- FUNCTIONS ---
+  const updatePlayerPlan = async (userId, newPlan) => await updateDoc(doc(db, 'users', userId), { plan: newPlan });
+
+  const toggleAdmin = async (userId, currentStatus) => {
+    if (userProfile.email !== SUPER_ROOT) return alert("Tylko Właściciel.");
+    await updateDoc(doc(db, 'users', userId), { isAdmin: !currentStatus });
+  };
+
+  const deleteUserAccount = async (userId, userEmail) => {
+    if (userProfile.email !== SUPER_ROOT) return alert("Tylko Właściciel może usuwać konta.");
+    if (userEmail === SUPER_ROOT) return alert("Nie możesz usunąć konta głównego Właściciela!");
+    if (window.confirm(`Czy na pewno chcesz bezpowrotnie usunąć z bazy użytkownika ${userEmail || 'Brak Emaila'}?`)) {
+      try { await deleteDoc(doc(db, 'users', userId)); } catch (e) { alert("Błąd usuwania: " + e.message); }
+    }
+  };
+
+  const updatePrice = async (branch, planKey, newData) => {
+    const newPlans = { ...plans }; newPlans[branch][planKey] = newData;
+    await setDoc(doc(db, 'settings', 'pricing'), newPlans);
+  };
+
+  // --- MODERACJA RECEPTUR ---
+  const toggleBlockRecipe = async (recipeId, currentBlocked) => {
+    await updateDoc(doc(db, 'recipes', recipeId), { blocked: !currentBlocked });
+  };
+  const verifyRecipe = async (recipeId, currentVerified) => {
+    await updateDoc(doc(db, 'recipes', recipeId), { verified: !currentVerified });
+  };
+  const deleteRecipeAdmin = async (recipeId) => {
+    if (window.confirm('Czy na pewno chcesz trwale usunąć tę recepturę?')) {
+      await deleteDoc(doc(db, 'recipes', recipeId));
+      setSelectedModRecipe(null);
+    }
+  };
+
+  // --- BANERY ---
+  const handleBannerImageUpload = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return alert("Dozwolone formaty: JPG, PNG, WEBP.");
+    if (file.size > 5 * 1024 * 1024) return alert("Plik za duży. Max 5 MB.");
+    setIsBannerUploading(true);
+    const formData = new FormData(); formData.append('file', file);
+    try {
+      const res = await fetch(MYDEVIL_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.url) setNewBannerForm(prev => ({ ...prev, imageUrl: data.url }));
+    } catch (e) { alert("Błąd uploadu."); } finally { setIsBannerUploading(false); }
+  };
+  const saveBanner = async () => {
+    if (!newBannerForm.content.trim()) return alert("Wpisz treść baneru!");
+    await addDoc(collection(db, 'ads'), { ...newBannerForm });
+    setNewBannerForm({ content: '', imageUrl: '', pdfUrl: '', linkUrl: '', active: true });
+    setShowBannerModal(false);
+  };
+
+  // --- STATYSTYKI (computed) ---
+  const stats = {
+    totalUsers: allUsers.length,
+    activeSubscriptions: allUsers.filter(u => {
+      const trialActive = Math.floor((new Date() - new Date(u.createdAt || 0)) / 86400000) <= 21;
+      return (u.plan && u.plan !== 'free') || trialActive;
+    }).length,
+    totalRecipes: allUserRecipes.length,
+    newUsersLast7Days: allUsers.filter(u => {
+      if (!u.createdAt) return false;
+      return Math.floor((new Date() - new Date(u.createdAt)) / 86400000) <= 7;
+    }).length,
+    userRecipesCount: allUserRecipes.filter(r => r.ownerId !== 'ADMIN').length,
+    blockedRecipes: allUserRecipes.filter(r => r.blocked).length,
+    verifiedRecipes: allUserRecipes.filter(r => r.verified).length,
+  };
+
+  const toggleFavorite = async (recipeId, e) => {
+    if (e) e.stopPropagation();
+    if (!user) { setIsAuthModalOpen(true); return; }
+    const current = userProfile?.favorites || [];
+    const updated = current.includes(recipeId) ? current.filter(id => id !== recipeId) : [...current, recipeId];
+    await updateDoc(doc(db, 'users', user.uid), { favorites: updated });
+    setUserProfile(prev => ({ ...prev, favorites: updated }));
+  };
+
+  const openRecipe = (recipeId) => {
+    setSelectedKey(recipeId);
+    setShowCalculator(true);
+  };
+
+  const openAddModal = () => {
+    setFormRecipe({ name: '', category: '', meats: [{ name: '', val: 0, grinding: '' }], spices: [{ name: '', perKg: 0, unit: 'g' }], tech: '', imageUrl: '' });
+    setIsAddModalOpen(true);
+  };
+
+  const formatTechText = (t) => {
+    if (!t || typeof t !== 'string') return "";
+    const html = t.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>').replace(/^- (.*$)/gim, '• $1').replace(/\n/g, '<br />');
+    return DOMPurify.sanitize(html);
+  };
+
+  const calculations = useMemo(() => {
+    const r = recipes[selectedKey];
+    if (!r) return { meats: [], spices: [] };
+    return {
+      meats: (r.meats || []).map(m => ({ ...m, weight: ((totalTarget * Number(m.percentage ?? 0)) / 100).toFixed(2) })),
+      spices: (r.spices || []).map(s => ({ ...s, weight: (totalTarget * Number(s.perKg ?? 0)).toFixed(2) }))
+    };
+  }, [recipes, selectedKey, totalTarget]);
+
+  const handleSaveRecipe = async () => {
+    if (!formRecipe.name || !formRecipe.category) return alert("Uzupełnij dane!");
+    const totalInputKg = formRecipe.meats.reduce((acc, m) => acc + Number(m.val ?? m.percentage ?? 0), 0);
+    if (totalInputKg <= 0) return alert("Suma wag mięsa musi być większa niż 0!");
+    try {
+      const payload = {
+        ...formRecipe,
+        meats: formRecipe.meats.map(m => ({
+          name: m.name, grinding: m.grinding || '',
+          percentage: (Number(m.val ?? m.percentage ?? 0) / totalInputKg) * 100,
+          val: Number(m.val ?? m.percentage ?? 0)
+        })),
+        spices: formRecipe.spices.map(s => ({ name: s.name, unit: s.unit || 'g', perKg: Number(s.perKg ?? 0) })),
+        updatedAt: serverTimestamp(),
+        ownerId: userProfile?.isAdmin ? 'ADMIN' : user.uid
+      };
+      if (formRecipe.id) await updateDoc(doc(db, 'recipes', formRecipe.id), payload);
+      else await addDoc(collection(db, 'recipes'), payload);
+      setIsAddModalOpen(false);
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleMyDevilUpload = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    if (!user) return alert("Musisz być zalogowany, aby wgrać zdjęcie.");
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return alert("Dozwolone formaty: JPG, PNG, WEBP.");
+    if (file.size > 5 * 1024 * 1024) return alert("Plik jest za duży. Maksymalny rozmiar to 5 MB.");
+    setIsUploading(true);
+    const formData = new FormData(); formData.append('file', file);
+    try {
+      const res = await fetch(MYDEVIL_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.url) setFormRecipe(prev => ({ ...prev, imageUrl: data.url }));
+    } catch (e) { alert("Błąd uploadu."); } finally { setIsUploading(false); }
+  };
+
+  const handleGoogleLogin = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { alert(e.message); } };
+  const handleFacebookLogin = async () => { try { await signInWithPopup(auth, new FacebookAuthProvider()); } catch (e) { alert(e.message); } };
+  const handleEmailAuth = async (e) => {
+    e.preventDefault();
+    try {
+      if (authMode === 'register') await createUserWithEmailAndPassword(auth, email, password);
+      else await signInWithEmailAndPassword(auth, email, password);
+    } catch (e) { alert(e.message); }
+  };
+  const handleResetPassword = async () => {
+    const emailToReset = user?.email || email;
+    if (!emailToReset) return alert("Wpisz e-mail!");
+    try { await sendPasswordResetEmail(auth, emailToReset); alert("Link do resetowania hasła został wysłany na " + emailToReset); } catch (e) { alert(e.message); }
+  };
+
+  const trialDaysLeft = userProfile ? Math.max(0, 21 - Math.floor((new Date() - new Date(userProfile.createdAt)) / 86400000)) : 0;
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      <style>{`
+        @media print {
+          .no-print, header, footer, nav, .sidebar, .trial-banner, .screen-view, .admin-only { display: none !important; }
+          body { background: white !important; margin: 0; padding: 0; }
+          .print-container { display: block !important; width: 100% !important; }
+          @page { size: auto; margin: 15mm; }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
+      {/* HEADER */}
+      <header className="no-print bg-white px-5 py-3 flex justify-between items-center shadow-sm border-b sticky top-0 z-40">
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => { setActiveTab('home'); setShowCalculator(false); }}>
+          <div className="w-10 h-8 transition-transform group-hover:scale-105"><img src="/logo.svg" alt="Logo" className="w-full h-full" /></div>
+          <h1 className="font-black text-lg uppercase tracking-tighter leading-none">Masarski Master</h1>
+        </div>
+        {userProfile?.isAdmin && (
+          <button onClick={() => { setActiveTab('superadmin'); setShowCalculator(false); }} className={`p-2.5 rounded-xl transition-all ${activeTab === 'superadmin' && !showCalculator ? 'bg-red-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400 hover:text-slate-700'}`}>
+            <LayoutDashboard size={18}/>
+          </button>
+        )}
+      </header>
+
+      {/* ADS BAR */}
+      {!showCalculator && ads.filter(a => a.active).map(ad => (
+        <div key={ad.id} className="no-print bg-blue-600 text-white px-5 py-2.5 flex items-center gap-3">
+          <Megaphone size={14} className="shrink-0"/><p className="text-[10px] font-black uppercase tracking-widest">{ad.content}</p>
+        </div>
+      ))}
+
+      {/* MAIN CONTENT */}
+      <div className="pb-24">
+
+        {/* ========== KALKULATOR (overlay po kliknięciu receptury) ========== */}
+        {showCalculator && recipes[selectedKey] && (
+          <main className="max-w-5xl mx-auto p-4 md:p-8 text-left animate-in fade-in duration-300">
+            <button onClick={() => setShowCalculator(false)} className="no-print flex items-center gap-2 mb-6 text-slate-500 hover:text-slate-900 font-bold text-sm transition-all group">
+              <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform"/> Wróć do listy
+            </button>
+
+            <div className="no-print flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
+              <div className="flex-1">
+                <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-4 py-1.5 rounded-full uppercase mb-3 inline-block">{recipes[selectedKey].category}</span>
+                <h2 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-slate-900 leading-none mb-6">{recipes[selectedKey].name}</h2>
+                <div className="flex gap-3 flex-wrap">
+                  {(recipes[selectedKey].ownerId === user?.uid || userProfile?.isAdmin) && (
+                    <button onClick={() => { setFormRecipe(recipes[selectedKey]); setIsAddModalOpen(true); }} className="bg-slate-100 px-5 py-3 rounded-2xl text-slate-500 hover:text-blue-600 text-[10px] font-black uppercase transition-all flex items-center gap-2"><Edit3 size={14}/> Edytuj</button>
+                  )}
+                  <button onClick={() => window.print()} className="bg-blue-600 text-white px-5 py-3 rounded-2xl shadow-lg hover:bg-blue-700 text-[10px] font-black uppercase flex items-center gap-2 transition-all"><Printer size={14}/> Drukuj</button>
+                </div>
+              </div>
+              {recipes[selectedKey].imageUrl && (
+                <div className="w-full md:w-56 h-56 rounded-[2rem] overflow-hidden shadow-2xl border-8 border-white md:rotate-2 shadow-blue-100 shrink-0">
+                  <img src={recipes[selectedKey].imageUrl} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
+
+            <div className="no-print bg-white rounded-[2rem] p-6 border shadow-sm mb-8">
+              <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest text-center">Wsad Całkowity (kg)</p>
+              <input type="number" max="40" value={totalTarget} onChange={(e) => setTotalTarget(Math.min(40, Number(e.target.value)))} className="text-6xl font-black w-full text-center bg-transparent outline-none text-slate-800" />
+              <input type="range" min="0.5" max="40" step="0.5" value={totalTarget} onChange={(e) => setTotalTarget(Number(e.target.value))} className="w-full h-2 bg-slate-100 rounded-full appearance-none accent-blue-600 mt-4" />
+            </div>
+
+            <div className="no-print screen-view grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-left">
+              <div className="space-y-3">
+                <h4 className="text-[11px] font-black uppercase text-slate-400 border-b pb-2 flex items-center gap-2 tracking-widest"><Hash size={12}/> Surowce</h4>
+                {calculations.meats.map((m, i) => (
+                  <div key={i} className="flex justify-between p-5 bg-white rounded-[1.5rem] border hover:bg-slate-50 transition-all">
+                    <div><p className="font-bold text-slate-800">{m.name}</p><p className="text-[10px] font-black text-blue-500 uppercase mt-0.5 italic tracking-widest">Siatka: {m.grinding || '---'}</p></div>
+                    <div className="text-right text-slate-900 font-black text-2xl">{m.weight} <span className="text-xs text-slate-400 uppercase">kg</span></div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                <h4 className="text-[11px] font-black uppercase text-slate-400 border-b pb-2 flex items-center gap-2 tracking-widest"><Zap size={12}/> Przyprawy</h4>
+                {calculations.spices.map((s, i) => (
+                  <div key={i} className="flex justify-between p-5 bg-slate-900 text-white rounded-[1.5rem] shadow-lg relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 group-hover:w-2 transition-all"></div>
+                    <div><p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">{s.name}</p><p className="text-3xl font-black tabular-nums leading-none">{s.weight} <span className="text-xs text-white/30 uppercase font-black">{s.unit}</span></p></div>
+                    <div className="text-right flex flex-col justify-end"><span className="text-[10px] font-bold text-white/20 uppercase italic">{s.perKg} {s.unit}/kg</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {recipes[selectedKey].tech && (
+              <div className="no-print screen-view p-8 bg-[#F1F5F9] border-2 border-dashed border-slate-200 rounded-[2rem] text-left mb-8">
+                <h5 className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest"><BookOpen size={14}/> Opis Technologiczny</h5>
+                <div className="text-sm text-slate-700 leading-relaxed font-medium italic" dangerouslySetInnerHTML={{ __html: formatTechText(recipes[selectedKey].tech) }} />
+              </div>
+            )}
+
+            {/* KARTA DO DRUKU */}
+            <div className="hidden print:block print-container text-black font-serif text-left">
+              <div className="flex justify-between items-center border-b-4 border-black pb-6 mb-8"><div className="w-32"><img src="/logo.svg" alt="EBRA" className="w-full" /></div><div className="text-right"><h1 className="text-sm font-bold tracking-widest text-slate-400 uppercase leading-none">EBRA Rzemiosło</h1><h2 className="text-3xl font-black tracking-tighter italic uppercase mt-2">Karta Receptury</h2></div></div>
+              <div className="grid grid-cols-2 gap-8 mb-10 border-b-2 border-slate-100 pb-8 text-left"><div><p className="text-[10px] uppercase font-bold text-slate-400 mb-1 leading-none">Nazwa Wyrobu:</p><h3 className="text-4xl font-black uppercase italic leading-none">{recipes[selectedKey].name}</h3><p className="mt-4 border-2 border-black inline-block px-4 py-1 text-xs font-bold uppercase tracking-widest leading-none">{recipes[selectedKey].category}</p></div><div className="text-right flex flex-col justify-end"><p className="text-[10px] uppercase font-bold text-slate-400 leading-none">Wsad:</p><p className="text-6xl font-black tabular-nums leading-none mt-2">{totalTarget} <span className="text-xl font-black">KG</span></p></div></div>
+              <div className="grid grid-cols-12 gap-10 mb-10 text-left"><div className="col-span-7"><h4 className="text-xs font-black uppercase border-b-2 border-black pb-2 mb-4 flex items-center gap-2"><FileText size={14}/> Surowce Mięsne</h4><table className="w-full text-sm border-collapse"><thead><tr className="text-left border-b border-slate-300"><th className="pb-2">Surowiec</th><th className="pb-2 text-center">Siatka</th><th className="pb-2 text-right">Waga</th></tr></thead><tbody>{calculations.meats.map((m, i) => (<tr key={i} className="border-b border-slate-100"><td className="py-3 font-bold">{m.name}</td><td className="py-3 text-center text-xs italic">{m.grinding || '---'}</td><td className="py-3 text-right font-black">{m.weight} kg</td></tr>))}</tbody></table></div><div className="col-span-5"><h4 className="text-xs font-black uppercase border-b-2 border-black pb-2 mb-4 flex items-center gap-2"><Zap size={14}/> Dodatki</h4><table className="w-full text-sm border-collapse"><thead><tr className="text-left border-b border-slate-300"><th className="pb-2">Składnik</th><th className="pb-2 text-right">Ilość</th></tr></thead><tbody>{calculations.spices.map((s, i) => (<tr key={i} className="border-b border-slate-100"><td className="py-3">{s.name}</td><td className="py-3 text-right font-black">{s.weight} {s.unit}</td></tr>))}</tbody></table></div></div>
+              <div className="border-2 border-black p-8 rounded-2xl mb-10 bg-slate-50/50 text-left"><h4 className="text-xs font-black uppercase mb-4 flex items-center gap-2">Proces Technologiczny</h4><div className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formatTechText(recipes[selectedKey].tech) }} /></div>
+              <div className="border-t-2 border-dashed border-slate-300 pt-6 text-center"><h4 className="text-[10px] font-black uppercase text-slate-400 mb-6 tracking-widest italic">Notatki z produkcji:</h4><div className="space-y-8">{[1,2,3].map(l => <div key={l} className="border-b border-slate-200 w-full h-1"></div>)}</div><div className="mt-12 flex justify-between items-center text-[8px] font-bold text-slate-300 uppercase tracking-[0.4em]"><span>Masarski Master PRO</span><span>ebra.pl</span><span>{new Date().toLocaleDateString()}</span></div></div>
+            </div>
+          </main>
+        )}
+
+        {/* ========== HOME ========== */}
+        {!showCalculator && activeTab === 'home' && (
+          <main className="max-w-lg mx-auto p-5 text-left animate-in fade-in duration-300">
+            <div className="mt-4 mb-8">
+              <h2 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 leading-none mb-2">Kalkulatory</h2>
+              <p className="text-sm text-slate-500 font-medium">Wybierz kalkulator, aby rozpocząć pracę</p>
+            </div>
+
+            <a href="https://masarz.ebra.pl" className="block bg-white rounded-[2.5rem] border shadow-xl overflow-hidden hover:shadow-2xl transition-all group">
+              <div className="h-36 bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('/bild/front.jpg')] bg-cover bg-center opacity-30 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700"></div>
+                <div className="relative z-10 w-20 h-14"><img src="/logo.svg" alt="Logo" className="w-full h-full object-contain drop-shadow-2xl" /></div>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-900">Masarski Master</h3>
+                    <p className="text-xs text-slate-500 font-medium mt-1">Profesjonalne receptury masarskie</p>
+                  </div>
+                  <div className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shrink-0">Otwórz</div>
+                </div>
+                <div className="mt-4 flex gap-2 flex-wrap">
+                  <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-3 py-1 rounded-full uppercase">Receptury</span>
+                  <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-3 py-1 rounded-full uppercase">Kalkulator</span>
+                  <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-3 py-1 rounded-full uppercase">Druk</span>
+                </div>
+              </div>
+            </a>
+
+            <div className="mt-4 p-6 bg-white rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
+              <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Więcej kalkulatorów wkrótce...</p>
+            </div>
+          </main>
+        )}
+
+        {/* ========== RECEPTURY (admin recipes) ========== */}
+        {!showCalculator && activeTab === 'recipes' && (
+          <main className="max-w-lg mx-auto p-4 animate-in fade-in duration-300 text-left">
+            <div className="mt-4 mb-5">
+              <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900">Receptury</h2>
+              <p className="text-xs text-slate-500 font-medium mt-1">Wzorcowe receptury dostępne dla wszystkich</p>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-3 mb-5 no-scrollbar">
+              {['Wszystkie', ...categories].map(c => (
+                <button key={c} onClick={() => setSelectedCategory(c)} className={`shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all whitespace-nowrap ${selectedCategory === c ? 'bg-slate-900 text-white shadow-md' : 'bg-white border text-slate-500 hover:bg-slate-50'}`}>{c}</button>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              {adminRecipes
+                .filter(r => selectedCategory === 'Wszystkie' || r.category === selectedCategory)
+                .map(r => {
+                  const isFav = favoriteIds.includes(r.id);
+                  return (
+                    <div key={r.id} className="flex items-center justify-between p-4 bg-white rounded-[1.5rem] border hover:shadow-md transition-all cursor-pointer group" onClick={() => openRecipe(r.id)}>
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 border flex items-center justify-center overflow-hidden shrink-0">
+                          {r.imageUrl ? <img src={r.imageUrl} className="w-full h-full object-cover" alt="" /> : <ChefHat className="text-slate-200" size={20}/>}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-slate-900 truncate text-sm">{r.name}</h4>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{r.category}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button onClick={(e) => toggleFavorite(r.id, e)} className={`p-2 rounded-xl transition-all ${isFav ? 'text-red-500 bg-red-50' : 'text-slate-300 hover:text-red-400 hover:bg-red-50'}`}>
+                          <Heart size={18} fill={isFav ? 'currentColor' : 'none'} />
+                        </button>
+                        {userProfile?.isAdmin && (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); setFormRecipe(r); setIsAddModalOpen(true); }} className="p-2 text-slate-300 hover:text-blue-600 rounded-xl transition-all"><Edit3 size={15}/></button>
+                            <button onClick={(e) => { e.stopPropagation(); if(window.confirm("Usunąć?")) deleteDoc(doc(db, 'recipes', r.id)); }} className="p-2 text-slate-300 hover:text-red-500 rounded-xl transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              }
+              {adminRecipes.filter(r => selectedCategory === 'Wszystkie' || r.category === selectedCategory).length === 0 && (
+                <div className="text-center py-16 text-slate-400">
+                  <BookOpen size={40} className="mx-auto mb-4 opacity-30"/>
+                  <p className="font-bold text-sm uppercase">Brak receptur w tej kategorii</p>
+                </div>
+              )}
+            </div>
+
+            {userProfile?.isAdmin && (
+              <button onClick={openAddModal} className="fixed bottom-24 right-4 bg-blue-600 text-white p-4 rounded-2xl shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all z-30 hover:scale-110">
+                <Plus size={22}/>
+              </button>
+            )}
+          </main>
+        )}
+
+        {/* ========== MOJE (user recipes + favorites) ========== */}
+        {!showCalculator && activeTab === 'my' && (
+          <main className="max-w-lg mx-auto p-4 animate-in fade-in duration-300 text-left">
+            {!user ? (
+              <div className="text-center pt-20 px-6">
+                <Heart size={48} className="mx-auto mb-6 text-slate-200"/>
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 mb-3">Zaloguj się</h2>
+                <p className="text-sm text-slate-500 mb-8 font-medium">Aby zobaczyć swoje receptury i ulubione</p>
+                <button onClick={() => setIsAuthModalOpen(true)} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-blue-700 transition-all">Zaloguj / Zarejestruj</button>
+              </div>
+            ) : (
+              <>
+                <div className="mt-4 mb-5 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900">Moje receptury</h2>
+                    <p className="text-xs text-slate-500 mt-1 font-medium">{myRecipes.length} / {recipeLimit === 9999 ? '∞' : recipeLimit} receptur</p>
+                  </div>
+                  {canAddRecipe ? (
+                    <button onClick={openAddModal} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-blue-700 transition-all">
+                      <Plus size={14}/> Dodaj
+                    </button>
+                  ) : (
+                    <div className="text-[10px] font-black text-red-500 uppercase bg-red-50 px-3 py-2 rounded-xl border border-red-100">Limit osiągnięty</div>
+                  )}
+                </div>
+
+                {myRecipes.length === 0 ? (
+                  <div className="text-center py-10 bg-white rounded-[2rem] border mb-6">
+                    <ChefHat size={36} className="mx-auto mb-3 text-slate-200"/>
+                    <p className="font-bold text-sm text-slate-400 uppercase">Nie masz jeszcze receptur</p>
+                    {canAddRecipe && (
+                      <button onClick={openAddModal} className="mt-4 text-blue-600 font-black text-xs uppercase underline underline-offset-4">Dodaj pierwszą</button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3 mb-8">
+                    {myRecipes.map(r => (
+                      <div key={r.id} className="flex items-center justify-between p-4 bg-white rounded-[1.5rem] border hover:shadow-md transition-all cursor-pointer" onClick={() => openRecipe(r.id)}>
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-50 border flex items-center justify-center overflow-hidden shrink-0">
+                            {r.imageUrl ? <img src={r.imageUrl} className="w-full h-full object-cover" alt="" /> : <ChefHat className="text-slate-200" size={20}/>}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-slate-900 truncate text-sm">{r.name}</h4>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{r.category}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                          <button onClick={(e) => { e.stopPropagation(); setFormRecipe(r); setIsAddModalOpen(true); }} className="p-2 text-slate-300 hover:text-blue-600 rounded-xl transition-all"><Edit3 size={15}/></button>
+                          <button onClick={(e) => { e.stopPropagation(); if(window.confirm("Usunąć?")) deleteDoc(doc(db, 'recipes', r.id)); }} className="p-2 text-slate-300 hover:text-red-500 rounded-xl transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {favoriteRecipes.length > 0 && (
+                  <>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-black uppercase italic tracking-tighter text-slate-900 flex items-center gap-2">
+                        <Heart size={16} className="text-red-500" fill="currentColor"/> Ulubione receptury
+                      </h3>
+                    </div>
+                    <div className="space-y-3">
+                      {favoriteRecipes.map(r => {
+                        const isFav = favoriteIds.includes(r.id);
+                        return (
+                          <div key={r.id} className="flex items-center justify-between p-4 bg-white rounded-[1.5rem] border hover:shadow-md transition-all cursor-pointer" onClick={() => openRecipe(r.id)}>
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div className="w-12 h-12 rounded-2xl bg-slate-50 border flex items-center justify-center overflow-hidden shrink-0">
+                                {r.imageUrl ? <img src={r.imageUrl} className="w-full h-full object-cover" alt="" /> : <ChefHat className="text-slate-200" size={20}/>}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-slate-900 truncate text-sm">{r.name}</h4>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{r.category}</span>
+                              </div>
+                            </div>
+                            <button onClick={(e) => toggleFavorite(r.id, e)} className="p-2 rounded-xl transition-all text-red-500 bg-red-50 ml-2 shrink-0">
+                              <Heart size={18} fill="currentColor" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {favoriteRecipes.length === 0 && (
+                  <div className="mt-2 p-5 bg-white rounded-[1.5rem] border text-center">
+                    <Heart size={24} className="mx-auto mb-2 text-slate-200"/>
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Dodaj ulubione klikając serduszko w zakładce Receptury</p>
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+        )}
+
+        {/* ========== KONTO ========== */}
+        {!showCalculator && activeTab === 'account' && (
+          <main className="max-w-lg mx-auto p-4 animate-in fade-in duration-300 text-left">
+            {!user ? (
+              <div className="text-center pt-20 px-6">
+                <User size={48} className="mx-auto mb-6 text-slate-200"/>
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 mb-3">Konto</h2>
+                <p className="text-sm text-slate-500 mb-8 font-medium">Zaloguj się, aby zarządzać swoim kontem</p>
+                <button onClick={() => setIsAuthModalOpen(true)} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-blue-700 transition-all">Zaloguj / Zarejestruj</button>
+              </div>
+            ) : (
+              <div className="space-y-4 mt-4">
+
+                {/* Profil */}
+                <div className="bg-white rounded-[2rem] p-5 border shadow-sm flex items-center gap-5">
+                  <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg rotate-3 shrink-0">
+                    {user?.email?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-slate-900 truncate text-sm">{user?.email}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-wider">Dołączono: {new Date(userProfile.createdAt).toLocaleDateString('pl-PL')}</p>
+                  </div>
+                </div>
+
+                {/* Subskrypcja */}
+                <div className="bg-white rounded-[2rem] p-5 border shadow-sm">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Subskrypcja</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-bold text-slate-700">Aktywny plan</span>
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase shadow-sm ${userProfile.isTrialActive ? 'bg-blue-600 text-white' : userProfile.plan === 'free' ? 'bg-slate-200 text-slate-600' : 'bg-green-500 text-white'}`}>
+                      {userProfile.isTrialActive ? 'Trial MAX' : (planData?.name || 'Free')}
+                    </span>
+                  </div>
+                  {userProfile.isTrialActive && (
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs text-slate-500">Pozostało w trialu</span>
+                      <span className="font-black text-orange-500 text-sm">{trialDaysLeft} {trialDaysLeft === 1 ? 'dzień' : 'dni'}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs text-slate-500">Wykorzystane receptury</span>
+                    <span className="font-black text-slate-900 text-sm">{myRecipes.length} / {recipeLimit === 9999 ? '∞' : recipeLimit}</span>
+                  </div>
+                  <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${myRecipes.length >= recipeLimit ? 'bg-red-500' : 'bg-blue-500'}`}
+                      style={{width: `${recipeLimit === 9999 ? 10 : Math.min(100, (myRecipes.length / recipeLimit) * 100)}%`}}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Zakupione kalkulatory */}
+                <div className="bg-white rounded-[2rem] p-5 border shadow-sm">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Zakupione kalkulatory</p>
+                  <div className="space-y-2">
+                    {(userProfile.tools || ['masarski']).map(tool => (
+                      <div key={tool} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
+                        <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                          <ChefHat size={15} className="text-blue-600"/>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-slate-900">{tool === 'masarski' ? 'Masarski Master' : tool}</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Aktywny</p>
+                        </div>
+                        <CheckCircle2 size={18} className="text-green-500 shrink-0"/>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Ustawienia konta */}
+                <div className="bg-white rounded-[2rem] p-5 border shadow-sm">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Ustawienia konta</p>
+                  <div className="space-y-2">
+                    <button onClick={handleResetPassword} className="w-full flex items-center justify-between p-4 bg-slate-50 rounded-2xl border font-bold text-slate-700 hover:bg-slate-100 transition-all text-sm group">
+                      <div className="flex items-center gap-3">
+                        <Lock size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors"/>
+                        <span>Zmień hasło</span>
+                      </div>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Admin shortcut */}
+                {userProfile?.isAdmin && (
+                  <button onClick={() => { setActiveTab('superadmin'); setShowCalculator(false); }} className="w-full p-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg">
+                    <LayoutDashboard size={16}/> Panel Administratora
+                  </button>
+                )}
+
+                {/* Wyloguj */}
+                <button onClick={() => signOut(auth)} className="w-full flex items-center justify-center gap-3 p-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 font-black uppercase text-xs hover:bg-red-600 hover:text-white transition-all shadow-sm">
+                  <Power size={16}/> Wyloguj się
+                </button>
+              </div>
+            )}
+          </main>
+        )}
+
+        {/* ========== SUPERADMIN ========== */}
+        {!showCalculator && activeTab === 'superadmin' && userProfile?.isAdmin && (
+          <main className="max-w-5xl mx-auto p-4 animate-in fade-in duration-300 text-left pb-28">
+
+            {/* ADMIN NAV */}
+            <div className="flex gap-2 overflow-x-auto pb-3 mt-3 mb-6 no-scrollbar">
+              {[
+                { id: 'stats', label: 'Statystyki', icon: BarChart2 },
+                { id: 'users', label: 'Użytkownicy', icon: Users },
+                { id: 'banners', label: 'Banery', icon: Megaphone },
+                { id: 'moderation', label: 'Receptury', icon: Shield },
+                { id: 'pricing', label: 'Cennik', icon: Tag },
+              ].map(t => {
+                const Icon = t.icon;
+                const active = adminSubTab === t.id;
+                return (
+                  <button key={t.id} onClick={() => setAdminSubTab(t.id)} className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${active ? 'bg-slate-900 text-white shadow-lg' : 'bg-white border text-slate-500 hover:bg-slate-50'}`}>
+                    <Icon size={13}/>{t.label}
+                  </button>
+                );
+              })}
+              <button onClick={() => signOut(auth)} className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all whitespace-nowrap ml-auto border border-red-100">
+                <Power size={13}/> Wyloguj
+              </button>
+            </div>
+
+            {/* ---- STATYSTYKI ---- */}
+            {adminSubTab === 'stats' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Użytkownicy ogółem', value: stats.totalUsers, color: 'blue', sub: `+${stats.newUsersLast7Days} ostatnie 7 dni` },
+                    { label: 'Aktywne subskrypcje', value: stats.activeSubscriptions, color: 'green', sub: `${Math.round(stats.activeSubscriptions / Math.max(stats.totalUsers, 1) * 100)}% użytkowników` },
+                    { label: 'Receptury w systemie', value: stats.totalRecipes, color: 'purple', sub: `${stats.userRecipesCount} użytkowników` },
+                    { label: 'Zablokowane receptury', value: stats.blockedRecipes, color: 'red', sub: `${stats.verifiedRecipes} zweryfikowanych` },
+                  ].map((s, i) => (
+                    <div key={i} className="bg-white rounded-[2rem] p-5 border shadow-sm">
+                      <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">{s.label}</p>
+                      <p className={`text-4xl font-black text-slate-900 mb-1`}>{s.value}</p>
+                      <p className="text-[10px] text-slate-400 font-medium">{s.sub}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-white rounded-[2rem] p-6 border shadow-sm">
+                  <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-5">Nowi użytkownicy (ostatnie 7 dni)</h3>
+                  {allUsers
+                    .filter(u => u.createdAt && Math.floor((new Date() - new Date(u.createdAt)) / 86400000) <= 7)
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .map(u => (
+                      <div key={u.id} className="flex items-center justify-between py-3 border-b last:border-0">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-black text-xs">{u.email?.[0]?.toUpperCase() || '?'}</div>
+                          <span className="font-bold text-sm text-slate-800">{u.email}</span>
+                        </div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{new Date(u.createdAt).toLocaleDateString('pl-PL')}</span>
+                      </div>
+                    ))}
+                  {allUsers.filter(u => u.createdAt && Math.floor((new Date() - new Date(u.createdAt)) / 86400000) <= 7).length === 0 && (
+                    <p className="text-sm text-slate-400 font-medium text-center py-4">Brak nowych użytkowników</p>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-[2rem] p-6 border shadow-sm">
+                  <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-5">Rozkład planów</h3>
+                  {['free', 'mini', 'midi', 'max'].map(p => {
+                    const count = allUsers.filter(u => (u.plan || 'free') === p).length;
+                    const pct = Math.round(count / Math.max(allUsers.length, 1) * 100);
+                    return (
+                      <div key={p} className="mb-3">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-[10px] font-black uppercase text-slate-600">{p}</span>
+                          <span className="text-[10px] font-black text-slate-400">{count} ({pct}%)</span>
+                        </div>
+                        <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div className="bg-blue-500 h-full rounded-full transition-all" style={{width: `${pct}%`}}></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ---- UŻYTKOWNICY ---- */}
+            {adminSubTab === 'users' && (
+              <div className="space-y-3">
+                {allUsers.map(u => {
+                  const uTrialActive = u.createdAt ? Math.floor((new Date() - new Date(u.createdAt)) / 86400000) <= 21 : false;
+                  const uRecipes = allUserRecipes.filter(r => r.ownerId === u.id).length;
+                  const uPlanData = (plans || DEFAULT_PLANS).food[u.plan || 'free'];
+                  return (
+                    <div key={u.id} className="bg-white rounded-[2rem] p-5 border shadow-sm">
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-black text-sm shrink-0">
+                            {u.email?.[0]?.toUpperCase() || '?'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-black text-sm text-slate-900 truncate">{u.email}</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                              Dołączył: {u.createdAt ? new Date(u.createdAt).toLocaleDateString('pl-PL') : '—'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          {uTrialActive && <span className="bg-blue-100 text-blue-600 text-[9px] font-black px-2.5 py-1 rounded-full uppercase">Trial</span>}
+                          {u.isAdmin && <span className="bg-amber-100 text-amber-700 text-[9px] font-black px-2.5 py-1 rounded-full uppercase">Admin</span>}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                        <div className="bg-slate-50 rounded-2xl p-3 border">
+                          <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Plan</p>
+                          <select value={u.plan || 'free'} onChange={(e) => updatePlayerPlan(u.id, e.target.value)} className="text-xs font-black uppercase bg-transparent outline-none cursor-pointer text-slate-900 w-full text-center">
+                            <option value="free">Free</option>
+                            <option value="mini">Mini</option>
+                            <option value="midi">Midi</option>
+                            <option value="max">Max</option>
+                          </select>
+                        </div>
+                        <div className="bg-slate-50 rounded-2xl p-3 border">
+                          <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Receptury</p>
+                          <p className="text-sm font-black text-slate-900">{uRecipes} / {uPlanData?.limit === 9999 ? '∞' : (uPlanData?.limit || 2)}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-2xl p-3 border">
+                          <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Wygaśnięcie</p>
+                          <p className="text-[10px] font-black text-slate-700">{uTrialActive ? `${Math.max(0, 21 - Math.floor((new Date() - new Date(u.createdAt)) / 86400000))}d trialu` : (u.plan !== 'free' ? 'Aktywny' : 'Brak')}</p>
+                        </div>
+                      </div>
+
+                      {u.email !== SUPER_ROOT && (
+                        <div className="mt-3 flex gap-2">
+                          <button onClick={() => toggleAdmin(u.id, u.isAdmin)} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${u.isAdmin ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                            {u.isAdmin ? 'Odbierz Admina' : 'Nadaj Admina'}
+                          </button>
+                          <button onClick={() => deleteUserAccount(u.id, u.email)} className="px-4 py-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all" title="Usuń konto">
+                            <Trash2 size={14}/>
+                          </button>
+                        </div>
+                      )}
+                      {u.email === SUPER_ROOT && (
+                        <div className="mt-3 text-center">
+                          <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Właściciel systemu</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ---- BANERY ---- */}
+            {adminSubTab === 'banners' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-black uppercase italic tracking-tighter text-slate-900">Banery reklamowe</h2>
+                    <p className="text-xs text-slate-500 mt-1">{ads.filter(a => a.active).length} aktywnych z {ads.length}</p>
+                  </div>
+                  <button onClick={() => setShowBannerModal(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-blue-700 transition-all">
+                    <Plus size={14}/> Nowy baner
+                  </button>
+                </div>
+
+                {ads.length === 0 && (
+                  <div className="text-center py-16 bg-white rounded-[2rem] border">
+                    <Megaphone size={40} className="mx-auto mb-4 text-slate-200"/>
+                    <p className="font-bold text-sm text-slate-400 uppercase">Brak banerów</p>
+                  </div>
+                )}
+
+                {ads.map(ad => (
+                  <div key={ad.id} className={`bg-white rounded-[2rem] border shadow-sm overflow-hidden transition-all ${!ad.active ? 'opacity-60' : ''}`}>
+                    {ad.imageUrl && (
+                      <div className="h-36 bg-slate-100 overflow-hidden">
+                        <img src={ad.imageUrl} alt="" className="w-full h-full object-cover"/>
+                      </div>
+                    )}
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <textarea
+                            className="w-full bg-transparent font-bold text-sm text-slate-900 outline-none resize-none leading-relaxed"
+                            rows={2}
+                            value={ad.content}
+                            onChange={(e) => updateDoc(doc(db, 'ads', ad.id), { content: e.target.value })}
+                          />
+                          <div className="flex gap-3 mt-2 flex-wrap">
+                            {ad.linkUrl && (
+                              <a href={ad.linkUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-blue-500 uppercase hover:underline">
+                                <Link2 size={10}/> Strona reklamodawcy
+                              </a>
+                            )}
+                            {ad.pdfUrl && (
+                              <a href={ad.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-orange-500 uppercase hover:underline">
+                                <FileIcon size={10}/> PDF
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <button
+                            onClick={() => updateDoc(doc(db, 'ads', ad.id), { active: !ad.active })}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ad.active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                          >
+                            {ad.active ? 'Aktywny' : 'Wyłączony'}
+                          </button>
+                          <button onClick={() => deleteDoc(doc(db, 'ads', ad.id))} className="px-3 py-1.5 bg-red-50 text-red-500 rounded-xl text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all">
+                            Usuń
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex gap-3 flex-wrap">
+                        <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+                          <Link2 size={12} className="text-slate-400 shrink-0"/>
+                          <input
+                            type="url"
+                            placeholder="Link do reklamodawcy..."
+                            className="text-xs font-medium text-slate-700 bg-slate-50 border rounded-lg px-2 py-1.5 outline-none focus:border-blue-400 w-full"
+                            value={ad.linkUrl || ''}
+                            onChange={(e) => updateDoc(doc(db, 'ads', ad.id), { linkUrl: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+                          <FileIcon size={12} className="text-slate-400 shrink-0"/>
+                          <input
+                            type="url"
+                            placeholder="Link do PDF..."
+                            className="text-xs font-medium text-slate-700 bg-slate-50 border rounded-lg px-2 py-1.5 outline-none focus:border-blue-400 w-full"
+                            value={ad.pdfUrl || ''}
+                            onChange={(e) => updateDoc(doc(db, 'ads', ad.id), { pdfUrl: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ---- MODERACJA RECEPTUR ---- */}
+            {adminSubTab === 'moderation' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <h2 className="text-xl font-black uppercase italic tracking-tighter text-slate-900">Receptury użytkowników</h2>
+                    <p className="text-xs text-slate-500 mt-1">{allUserRecipes.filter(r => r.ownerId !== 'ADMIN').length} receptur · {stats.blockedRecipes} zablokowanych · {stats.verifiedRecipes} zweryfikowanych</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <select
+                    value={modFilterUser}
+                    onChange={e => setModFilterUser(e.target.value)}
+                    className="flex-1 bg-white border p-3 rounded-2xl text-xs font-bold outline-none cursor-pointer"
+                  >
+                    <option value="">Wszyscy użytkownicy</option>
+                    {allUsers.filter(u => allUserRecipes.some(r => r.ownerId === u.id)).map(u => (
+                      <option key={u.id} value={u.id}>{u.email}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {allUserRecipes
+                  .filter(r => r.ownerId !== 'ADMIN')
+                  .filter(r => !modFilterUser || r.ownerId === modFilterUser)
+                  .map(r => {
+                    const owner = allUsers.find(u => u.id === r.ownerId);
+                    const isExpanded = selectedModRecipe?.id === r.id;
+                    return (
+                      <div key={r.id} className={`bg-white rounded-[2rem] border shadow-sm overflow-hidden transition-all ${r.blocked ? 'border-red-200 bg-red-50/30' : ''} ${r.verified ? 'border-green-200' : ''}`}>
+                        <div className="p-5 flex items-start gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-100 border flex items-center justify-center overflow-hidden shrink-0">
+                            {r.imageUrl ? <img src={r.imageUrl} className="w-full h-full object-cover" alt=""/> : <ChefHat size={18} className="text-slate-300"/>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-black text-slate-900 text-sm">{r.name}</h4>
+                              {r.blocked && <span className="bg-red-100 text-red-600 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Zablokowana</span>}
+                              {r.verified && <span className="bg-green-100 text-green-700 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Zweryfikowana</span>}
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{r.category}</p>
+                            <p className="text-[10px] text-blue-500 font-bold mt-1 truncate">{owner?.email || r.ownerId}</p>
+                          </div>
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            <button
+                              onClick={() => setSelectedModRecipe(isExpanded ? null : r)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200 transition-all"
+                            >
+                              <Eye size={11}/> {isExpanded ? 'Zwiń' : 'Podgląd'}
+                            </button>
+                            <button
+                              onClick={() => toggleBlockRecipe(r.id, r.blocked)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${r.blocked ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                            >
+                              <Ban size={11}/> {r.blocked ? 'Odblokuj' : 'Zablokuj'}
+                            </button>
+                            <button
+                              onClick={() => verifyRecipe(r.id, r.verified)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${r.verified ? 'bg-green-200 text-green-800 hover:bg-green-300' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
+                            >
+                              <ShieldCheck size={11}/> {r.verified ? 'Cofnij' : 'Weryfikuj'}
+                            </button>
+                            <button
+                              onClick={() => deleteRecipeAdmin(r.id)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-all"
+                            >
+                              <Trash2 size={11}/> Usuń
+                            </button>
+                          </div>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="border-t bg-slate-50 p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2">Surowce mięsne</p>
+                                <div className="space-y-1.5">
+                                  {(r.meats || []).map((m, i) => (
+                                    <div key={i} className="flex justify-between bg-white p-2.5 rounded-xl border text-xs">
+                                      <span className="font-bold text-slate-800">{m.name}</span>
+                                      <span className="font-black text-blue-600">{m.percentage?.toFixed(1)}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2">Przyprawy / Dodatki</p>
+                                <div className="space-y-1.5">
+                                  {(r.spices || []).map((s, i) => (
+                                    <div key={i} className="flex justify-between bg-slate-900 text-white p-2.5 rounded-xl text-xs">
+                                      <span className="font-bold text-blue-300">{s.name}</span>
+                                      <span className="font-black">{s.perKg} {s.unit}/kg</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            {r.tech && (
+                              <div>
+                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2">Opis technologiczny</p>
+                                <div className="bg-white p-4 rounded-2xl border text-xs text-slate-700 leading-relaxed font-medium italic" dangerouslySetInnerHTML={{ __html: formatTechText(r.tech) }} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {allUserRecipes.filter(r => r.ownerId !== 'ADMIN').filter(r => !modFilterUser || r.ownerId === modFilterUser).length === 0 && (
+                  <div className="text-center py-16 bg-white rounded-[2rem] border">
+                    <Shield size={40} className="mx-auto mb-4 text-slate-200"/>
+                    <p className="font-bold text-sm text-slate-400 uppercase">Brak receptur do moderacji</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ---- CENNIK & KATEGORIE ---- */}
+            {adminSubTab === 'pricing' && plans && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-[2rem] shadow-sm border text-left">
+                  <h3 className="text-base font-black uppercase mb-5 text-blue-600 flex items-center gap-2"><Tag size={16}/> Cennik planów</h3>
+                  {['mini', 'midi', 'max'].map(k => (
+                    <div key={k} className="mb-4 bg-slate-50 p-4 rounded-2xl border">
+                      <p className="text-[10px] font-black uppercase text-slate-400 mb-2">{k}</p>
+                      <div className="flex gap-3">
+                        <input className="bg-white border p-3 rounded-xl flex-1 font-bold outline-none text-sm" value={plans.food[k].price} onChange={(e) => updatePrice('food', k, {...plans.food[k], price: e.target.value})} />
+                        <input className="bg-white border p-3 rounded-xl w-20 text-center font-black outline-none" type="number" value={plans.food[k].limit} onChange={(e) => updatePrice('food', k, {...plans.food[k], limit: Number(e.target.value)})} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-[#0F172A] p-6 rounded-[2rem] text-white shadow-xl">
+                  <h3 className="text-base font-black uppercase mb-5 text-blue-400 flex items-center gap-2"><Tag size={16}/> Kategorie Globalne</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto mb-4 pr-1">
+                    {categories.map(c => (
+                      <div key={c} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 group">
+                        <span className="text-xs font-bold uppercase tracking-widest">{c}</span>
+                        <button onClick={async () => {
+                          const snap = await getDocs(query(collection(db, 'categories'), where('name', '==', c)));
+                          snap.forEach(async (d) => await deleteDoc(doc(db, 'categories', d.id)));
+                        }} className="text-red-400 opacity-40 group-hover:opacity-100 p-1 transition-opacity"><Trash2 size={13}/></button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input placeholder="Nowa kategoria..." className="bg-white/10 rounded-xl p-3 text-xs w-full text-white outline-none focus:ring-2 focus:ring-blue-500" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if(e.key === 'Enter' && newCatName) { addDoc(collection(db, 'categories'), { name: newCatName }); setNewCatName(''); }}}/>
+                    <button onClick={async () => { if(!newCatName) return; await addDoc(collection(db, 'categories'), { name: newCatName }); setNewCatName(''); }} className="bg-blue-600 p-3 rounded-xl hover:bg-blue-700 transition-all shrink-0"><Plus size={16}/></button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+        )}
+
+        {/* MODAL: NOWY BANER */}
+        {showBannerModal && (
+          <div className="no-print fixed inset-0 bg-slate-900/90 z-50 flex items-center justify-center p-4 backdrop-blur-xl animate-in fade-in duration-200">
+            <div className="bg-white rounded-[3rem] w-full max-w-lg p-8 relative shadow-2xl">
+              <button onClick={() => setShowBannerModal(false)} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"><X size={18}/></button>
+              <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-6">Nowy baner</h2>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1">Treść baneru *</p>
+                  <textarea
+                    className="w-full p-4 border-2 rounded-2xl font-bold text-sm outline-none focus:border-blue-500 resize-none"
+                    rows={3}
+                    placeholder="Tekst wyświetlany na banerze..."
+                    value={newBannerForm.content}
+                    onChange={e => setNewBannerForm(p => ({...p, content: e.target.value}))}
+                  />
+                </div>
+
+                <div className="bg-slate-50 rounded-2xl border-2 border-dashed p-4 flex items-center justify-between gap-4">
+                  {newBannerForm.imageUrl ? (
+                    <div className="relative w-full">
+                      <img src={newBannerForm.imageUrl} alt="" className="w-full h-24 object-cover rounded-xl"/>
+                      <button onClick={() => setNewBannerForm(p => ({...p, imageUrl: ''}))} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"><X size={10}/></button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-3 cursor-pointer w-full">
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                        <ImageIcon size={16} className="text-blue-600"/>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-600">{isBannerUploading ? 'Wgrywanie...' : 'Dodaj zdjęcie baneru'}</p>
+                        <p className="text-[9px] text-slate-400">JPG, PNG, WEBP · max 5 MB</p>
+                      </div>
+                      <input type="file" className="hidden" accept="image/*" onChange={handleBannerImageUpload} disabled={isBannerUploading}/>
+                    </label>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Link2 size={14} className="text-slate-400 shrink-0"/>
+                  <input
+                    type="url"
+                    placeholder="Link do strony reklamodawcy (opcjonalnie)"
+                    className="flex-1 p-3 border-2 rounded-xl text-sm font-medium outline-none focus:border-blue-500"
+                    value={newBannerForm.linkUrl}
+                    onChange={e => setNewBannerForm(p => ({...p, linkUrl: e.target.value}))}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <FileIcon size={14} className="text-slate-400 shrink-0"/>
+                  <input
+                    type="url"
+                    placeholder="Link do pliku PDF (opcjonalnie)"
+                    className="flex-1 p-3 border-2 rounded-xl text-sm font-medium outline-none focus:border-blue-500"
+                    value={newBannerForm.pdfUrl}
+                    onChange={e => setNewBannerForm(p => ({...p, pdfUrl: e.target.value}))}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border">
+                  <span className="text-sm font-bold text-slate-700">Aktywny od razu</span>
+                  <button
+                    onClick={() => setNewBannerForm(p => ({...p, active: !p.active}))}
+                    className={`w-12 h-6 rounded-full transition-all relative ${newBannerForm.active ? 'bg-green-500' : 'bg-slate-200'}`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${newBannerForm.active ? 'left-6' : 'left-0.5'}`}></div>
+                  </button>
+                </div>
+
+                <button onClick={saveBanner} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-xl flex items-center justify-center gap-2">
+                  <Save size={16}/> Zapisz baner
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========== DOLNA NAWIGACJA ========== */}
+      <nav className="no-print fixed bottom-0 left-0 right-0 bg-white border-t z-40 flex items-center justify-around px-2 py-1.5 shadow-lg">
+        {[
+          { id: 'home', label: 'Home', icon: Home },
+          { id: 'recipes', label: 'Receptury', icon: BookOpen },
+          { id: 'my', label: 'Moje', icon: Heart },
+          { id: 'account', label: 'Konto', icon: User },
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id && !showCalculator;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setShowCalculator(false); }}
+              className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} fill={isActive && tab.id === 'my' ? 'currentColor' : 'none'} />
+              <span className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ========== MODAL AUTH ========== */}
+      {isAuthModalOpen && (
+        <div className="no-print fixed inset-0 bg-[#0F172A]/95 z-50 flex items-center justify-center p-4 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-white rounded-[3rem] p-10 md:p-12 max-w-md w-full relative shadow-2xl border-t-[16px] border-blue-600">
+            <button onClick={() => setIsAuthModalOpen(false)} className="absolute top-7 right-7 text-slate-300 hover:text-slate-900 transition-colors"><X size={28}/></button>
+            <div className="w-16 h-12 mx-auto mb-6 drop-shadow-xl"><img src="/logo.svg" alt="Logo" className="w-full h-full" /></div>
+            <h2 className="text-3xl font-black uppercase tracking-tighter mb-6 italic text-slate-900 leading-none text-center">Witaj w EBRA</h2>
+            <div className="space-y-3">
+              <button onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-4 border-2 p-4 rounded-2xl font-black uppercase text-[10px] hover:bg-slate-50 transition-all shadow-sm"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="G" /> Google</button>
+              <button onClick={handleFacebookLogin} className="w-full flex items-center justify-center gap-4 bg-[#1877F2] text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg hover:brightness-110 transition-all"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" className="w-4 h-4" alt="F" /> Facebook</button>
+            </div>
+            <div className="relative my-8 border-t border-slate-100 flex justify-center text-center text-slate-300 uppercase font-black text-[10px]"><span className="bg-white px-4 -mt-2.5 tracking-widest leading-none">Lub E-mail</span></div>
+            <form onSubmit={handleEmailAuth} className="space-y-3 text-left text-slate-800">
+              <input type="email" required placeholder="E-mail" className="w-full border-2 p-4 rounded-2xl font-bold bg-slate-50 outline-none focus:border-blue-500" value={email} onChange={e=>setEmail(e.target.value)} />
+              <div className="flex flex-col gap-2">
+                <input type="password" required placeholder="Hasło" className="w-full border-2 p-4 rounded-2xl font-bold bg-slate-50 outline-none focus:border-blue-500" value={password} onChange={e=>setPassword(e.target.value)} />
+                <button type="button" onClick={handleResetPassword} className="text-left text-[9px] font-bold text-blue-500 uppercase px-4 leading-none">Zapomniałeś hasła?</button>
+              </div>
+              <button type="submit" className="w-full bg-[#0F172A] text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all mt-4">{authMode === 'login' ? 'Zaloguj się' : 'Załóż konto'}</button>
+            </form>
+            <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="mt-6 text-[10px] font-bold text-blue-500 uppercase underline tracking-widest text-center w-full block">{authMode === 'login' ? 'Nie masz konta? Zarejestruj się' : 'Masz już konto? Zaloguj się'}</button>
+          </div>
+        </div>
+      )}
+
+      {/* ========== MODAL DODAWANIA / EDYCJI ========== */}
+      {isAddModalOpen && (
+        <div className="no-print fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-4 backdrop-blur-xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-[4rem] w-full max-w-7xl max-h-[90vh] overflow-y-auto p-8 md:p-10 relative">
+            <button onClick={()=>setIsAddModalOpen(false)} className="absolute top-7 right-7 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"><X size={20}/></button>
+            <h2 className="text-3xl font-black uppercase mb-8 italic text-left leading-none tracking-tighter">Zarządzanie Recepturą</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left text-slate-800">
+              <div className="space-y-4">
+                <div className="space-y-1"><p className="text-[10px] font-black text-slate-300 uppercase ml-4">Nazwa wyrobu</p><input placeholder="Np. Krakowska Sucha" className="w-full p-5 border-2 rounded-2xl font-bold focus:border-blue-500 outline-none" value={formRecipe.name} onChange={e=>setFormRecipe({...formRecipe, name: e.target.value})} /></div>
+                <div className="space-y-1"><p className="text-[10px] font-black text-slate-300 uppercase ml-4">Kategoria</p><select className="w-full p-5 border-2 rounded-2xl font-bold cursor-pointer outline-none" value={formRecipe.category} onChange={e=>setFormRecipe({...formRecipe, category: e.target.value})}><option value="">Wybierz...</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+                <div className="space-y-1"><p className="text-[10px] font-black text-slate-300 uppercase ml-4 leading-none">Proces (użyj **pogrubienie**)</p><textarea placeholder="Opis procesu produkcyjnego..." className="w-full p-5 border-2 rounded-2xl h-56 font-medium outline-none focus:border-blue-500 text-left" value={formRecipe.tech} onChange={e=>setFormRecipe({...formRecipe, tech: e.target.value})} /></div>
+                <div className="bg-slate-50 p-6 rounded-[2.5rem] border-2 border-dashed text-center min-h-[120px] flex items-center justify-center relative overflow-hidden text-slate-400">{formRecipe.imageUrl ? (<><img src={formRecipe.imageUrl} className="w-full h-28 object-cover rounded-2xl shadow-lg" alt="P"/><button onClick={() => setFormRecipe({...formRecipe, imageUrl: ''})} className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg"><X size={12}/></button></>) : (<label className="cursor-pointer w-full"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2 opacity-30"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span className="text-[9px] font-black uppercase tracking-widest">{isUploading ? 'Wgrywanie...' : 'Wgraj zdjęcie'}</span><input type="file" className="hidden" accept="image/*" onChange={handleMyDevilUpload} disabled={isUploading}/></label>)}</div>
+              </div>
+
+              <div className="space-y-5">
+                <div className="flex justify-between items-center font-black uppercase text-slate-400 ml-2 tracking-widest">Surowce (KG)<button onClick={()=>setFormRecipe({...formRecipe, meats: [...formRecipe.meats, {name: '', val: 0, grinding: ''}]})} className="p-2 bg-blue-600 text-white rounded-lg shadow-lg"><Plus size={15}/></button></div>
+                {formRecipe.meats.map((m, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input placeholder="Mięso" className="flex-1 p-3 border-2 rounded-xl font-bold text-sm" value={m.name} onChange={e=>{const l=[...formRecipe.meats]; l[i].name=e.target.value; setFormRecipe({...formRecipe, meats: l})}} />
+                    <input placeholder="Sitko" className="w-20 p-3 border-2 rounded-xl text-center text-xs" value={m.grinding} onChange={e=>{const l=[...formRecipe.meats]; l[i].grinding=e.target.value; setFormRecipe({...formRecipe, meats: l})}} />
+                    <div className="relative"><input type="number" className="w-20 p-3 border-2 rounded-xl text-center font-black text-blue-600 pr-5" value={m.val ?? m.percentage ?? ''} onChange={e=>{const l=[...formRecipe.meats]; l[i].val=e.target.value; setFormRecipe({...formRecipe, meats: l})}} /><span className="absolute right-2 top-3.5 text-[8px] font-black text-slate-300">KG</span></div>
+                    <button onClick={()=>{const l=[...formRecipe.meats]; l.splice(i,1); setFormRecipe({...formRecipe, meats: l})}} className="text-red-300 hover:text-red-600 p-1"><Trash2 size={15}/></button>
+                  </div>
+                ))}
+                <div className="bg-slate-50 p-3 rounded-2xl text-[10px] font-black uppercase text-slate-400 flex justify-between"><span>Suma wag:</span><span className="text-blue-600">{formRecipe.meats.reduce((acc, m) => acc + Number(m.val ?? m.percentage ?? 0), 0).toFixed(2)} KG</span></div>
+
+                <div className="flex justify-between items-center font-black uppercase text-slate-400 ml-2 tracking-widest mt-4">Przyprawy (g/kg)<button onClick={()=>setFormRecipe({...formRecipe, spices: [...formRecipe.spices, {name: '', perKg: 0, unit: 'g'}]})} className="p-2 bg-slate-900 text-white rounded-lg shadow-lg"><Plus size={15}/></button></div>
+                {formRecipe.spices.map((s, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input placeholder="Nazwa" className="flex-1 p-3 border-2 rounded-xl font-bold text-sm" value={s.name} onChange={e=>{const l=[...formRecipe.spices]; l[i].name=e.target.value; setFormRecipe({...formRecipe, spices: l})}} />
+                    <input type="number" step="0.1" className="w-20 p-3 border-2 rounded-xl text-center font-black" value={s.perKg} onChange={e=>{const l=[...formRecipe.spices]; l[i].perKg=e.target.value; setFormRecipe({...formRecipe, spices: l})}} />
+                    <select className="w-16 p-3 border-2 rounded-xl text-center font-bold text-xs bg-white outline-none" value={s.unit} onChange={e=>{const l=[...formRecipe.spices]; l[i].unit=e.target.value; setFormRecipe({...formRecipe, spices: l})}}>
+                      <option value="g">g</option>
+                      <option value="łyż.">łyż.</option>
+                      <option value="ml">ml</option>
+                      <option value="l">l</option>
+                      <option value="szt">szt</option>
+                    </select>
+                    <button onClick={()=>{const l=[...formRecipe.spices]; l.splice(i,1); setFormRecipe({...formRecipe, spices: l})}} className="text-red-300 hover:text-red-600 p-1"><Trash2 size={15}/></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={handleSaveRecipe} className="w-full mt-8 py-5 bg-slate-900 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2"><Save size={18}/> Zapisz Recepturę</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
