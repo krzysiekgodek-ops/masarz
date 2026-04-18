@@ -210,25 +210,63 @@ const App = () => {
         {/* HOME */}
         {activeTab === 'home' && (
           <div className="p-5 pt-6">
+            {/* Banery reklamowe */}
+            {ads.filter(a => a.active).map(ad => (
+              <div key={ad.id} className="mb-3 bg-[#DC2626] text-white px-4 py-3 rounded-2xl flex items-center gap-3">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-none"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+                <p className="text-xs font-black uppercase tracking-wide leading-tight">{ad.content}</p>
+              </div>
+            ))}
+
             <h2 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 leading-none mb-2">Kalkulatory</h2>
             <p className="text-sm text-slate-500 font-medium mb-6">Wybierz kalkulator, aby rozpocząć pracę</p>
-            <a href="https://masarz.ebra.pl" className="block bg-white rounded-[2.5rem] border shadow-xl overflow-hidden hover:shadow-2xl transition-all group">
-              <div className="h-36 bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/bild/front.jpg')] bg-cover bg-center opacity-30 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700" />
+
+            {/* Masarski Master */}
+            <button
+              onClick={() => setActiveTab('recipes')}
+              className="w-full text-left block bg-white rounded-[2.5rem] border shadow-xl overflow-hidden hover:shadow-2xl transition-all group"
+            >
+              <div className="h-36 bg-[#DC2626] flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('/bild/front.jpg')] bg-cover bg-center opacity-20 group-hover:opacity-30 group-hover:scale-105 transition-all duration-700" />
                 <div className="relative z-10 w-20 h-14"><img src="/logo.svg" alt="Logo" className="w-full h-full object-contain drop-shadow-2xl" /></div>
               </div>
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-900">Masarski Master</h3>
-                    <p className="text-xs text-slate-500 font-medium mt-1">Profesjonalne receptury masarskie</p>
+                    <p className="text-xs text-slate-500 font-medium mt-1">Receptury mięsne</p>
                   </div>
                   <span className="bg-red-600 text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shrink-0">Otwórz</span>
                 </div>
               </div>
-            </a>
-            <div className="mt-4 p-5 bg-white rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
-              <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Więcej kalkulatorów wkrótce…</p>
+            </button>
+
+            {/* Wkrótce: Kalkulator Techniczny */}
+            <div className="mt-4 bg-white rounded-[2.5rem] border shadow-sm overflow-hidden opacity-50 grayscale">
+              <div className="h-28 bg-slate-200 flex items-center justify-center">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+              </div>
+              <div className="p-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-900">Kalkulator Techniczny</h3>
+                  <p className="text-xs text-slate-500 font-medium mt-1">Obliczenia technologiczne</p>
+                </div>
+                <span className="bg-slate-200 text-slate-500 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shrink-0">Wkrótce</span>
+              </div>
+            </div>
+
+            {/* Wkrótce: Auto Serwis */}
+            <div className="mt-4 bg-white rounded-[2.5rem] border shadow-sm overflow-hidden opacity-50 grayscale">
+              <div className="h-28 bg-slate-200 flex items-center justify-center">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              </div>
+              <div className="p-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-900">Auto Serwis</h3>
+                  <p className="text-xs text-slate-500 font-medium mt-1">Kalkulator serwisowy</p>
+                </div>
+                <span className="bg-slate-200 text-slate-500 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shrink-0">Wkrótce</span>
+              </div>
             </div>
           </div>
         )}
