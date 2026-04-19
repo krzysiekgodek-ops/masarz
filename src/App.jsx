@@ -185,7 +185,7 @@ const App = () => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans">
+    <div className="min-h-screen bg-[#0F172A] text-[#F8FAFC] font-sans">
       <style>{`
         @media print {
           .no-print, header, footer, nav, .trial-banner { display: none !important; }

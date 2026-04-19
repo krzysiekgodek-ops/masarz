@@ -84,8 +84,8 @@ const HomeScreen = ({ setActiveTab, ads }) => {
         </div>
       ))}
 
-      <h2 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 leading-none mb-2">Kalkulatory</h2>
-      <p className="text-sm text-slate-500 font-medium mb-6">Wybierz kalkulator, aby rozpocząć pracę</p>
+      <h2 className="text-3xl font-black uppercase italic tracking-tighter text-[#F8FAFC] leading-none mb-2">Kalkulatory</h2>
+      <p className="text-sm text-[#94A3B8] font-medium mb-6">Wybierz kalkulator, aby rozpocząć pracę</p>
 
       <div className="flex flex-col gap-4">
         {sorted.map(calc => {
@@ -95,43 +95,59 @@ const HomeScreen = ({ setActiveTab, ads }) => {
               {/* Karta kalkulatora */}
               <button
                 onClick={() => handleCardClick(calc)}
-                className={`w-full text-left bg-white rounded-[2.5rem] border overflow-hidden transition-all ${
+                className={`w-full text-left bg-[#1E293B] rounded-[2.5rem] border border-[#334155] overflow-hidden transition-all ${
                   calc.active
                     ? 'shadow-xl hover:shadow-2xl group'
-                    : 'shadow-sm opacity-50 grayscale'
+                    : 'opacity-50 grayscale'
                 }`}
               >
                 {calc.active ? (
-                  <div className="h-36 bg-[#DC2626] flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[url('/bild/front.jpg')] bg-cover bg-center opacity-20 group-hover:opacity-30 group-hover:scale-105 transition-all duration-700" />
-                    <div className="relative z-10 w-20 h-14">
-                      <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain drop-shadow-2xl" />
+                  <div className="relative w-full overflow-hidden" style={{ height: '200px' }}>
+                    {/* Zdjęcie banera */}
+                    <img
+                      src="/masarz-banner.jpg"
+                      alt="Masarski Master"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    />
+                    {/* Ciemny gradient po lewej */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
+                    {/* Logo góra środek */}
+                    <img src="/logo.svg" alt="Logo" className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-12 drop-shadow z-10" />
+                    {/* Tekst po lewej */}
+                    <div className="absolute inset-0 flex flex-col justify-center px-7 gap-1">
+                      <p className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none drop-shadow">
+                        Masarski Master
+                      </p>
+                      <p className="text-sm text-slate-300 font-medium">Receptury mięsne</p>
+                      <span className="mt-3 self-start bg-[#DC2626] text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest">
+                        Otwórz
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="h-28 bg-slate-200 flex items-center justify-center">
+                  <div className="h-28 bg-[#0F172A] flex items-center justify-center">
                     {calc.icon}
                   </div>
                 )}
 
-                <div className="p-6 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-900">{calc.name}</h3>
-                    <p className="text-xs text-slate-500 font-medium mt-1">{calc.description}</p>
+                {!calc.active && (
+                  <div className="p-6 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="text-xl font-black uppercase italic tracking-tighter text-[#F8FAFC]">{calc.name}</h3>
+                      <p className="text-xs text-[#94A3B8] font-medium mt-1">{calc.description}</p>
+                    </div>
+                    <span className="shrink-0 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest bg-[#334155] text-[#94A3B8]">
+                      Wkrótce
+                    </span>
                   </div>
-                  <span className={`shrink-0 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest ${
-                    calc.active ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-500'
-                  }`}>
-                    {calc.active ? 'Otwórz' : 'Wkrótce'}
-                  </span>
-                </div>
+                )}
               </button>
 
               {/* Przycisk serce — poza <button> karty, żeby nie triggerował kliknięcia */}
               <button
                 onClick={(e) => toggleFavorite(calc.id, e)}
                 aria-label={isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
-                className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-md transition-transform active:scale-90 hover:scale-110"
+                className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-[#1E293B]/90 backdrop-blur-sm shadow-md transition-transform active:scale-90 hover:scale-110"
               >
                 <Heart
                   size={18}

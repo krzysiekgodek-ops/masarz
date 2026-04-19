@@ -45,7 +45,7 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
       <div className="no-print">
 
       {/* Ciemny nagłówek receptury */}
-      <div className="bg-[#111827] px-4 pt-4 pb-5">
+      <div className="bg-[#0F172A] px-4 pt-4 pb-5">
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 text-slate-400 text-[11px] font-black uppercase tracking-wider mb-4"
@@ -70,8 +70,8 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
       </div>
 
       {/* Blok wsadu na ciemnym tle */}
-      <div className="bg-[#111827] mx-4 mt-4 rounded-3xl p-6 shadow-xl">
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center mb-1">
+      <div className="bg-[#1E293B] border border-[#334155] mx-4 mt-4 rounded-3xl p-6 shadow-xl">
+        <p className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest text-center mb-1">
           Wsad Całkowity (kg)
         </p>
         <input
@@ -90,7 +90,7 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
           onChange={e => setTotalTarget(Number(e.target.value))}
           className="w-full h-2 bg-white/10 rounded-full appearance-none accent-[#DC2626] mt-4"
         />
-        <div className="flex justify-between text-[10px] font-bold text-slate-600 mt-1.5">
+        <div className="flex justify-between text-[10px] font-bold text-[#64748B] mt-1.5">
           <span>0.5 kg</span>
           <span>40 kg</span>
         </div>
@@ -99,21 +99,21 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
       {/* Surowce — białe karty */}
       {calculations.meats.length > 0 && (
         <div className="px-4 mt-6">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+          <h3 className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest mb-3 flex items-center gap-2">
             <Hash size={12} /> Surowce
           </h3>
           <div className="space-y-2">
             {calculations.meats.map((m, i) => (
-              <div key={i} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <div key={i} className="flex justify-between items-center p-4 bg-[#1E293B] rounded-2xl border border-[#334155]">
                 <div>
-                  <p className="font-black text-slate-900 text-sm">{m.name}</p>
+                  <p className="font-black text-[#F8FAFC] text-sm">{m.name}</p>
                   <p className="text-[10px] font-bold text-[#DC2626] uppercase tracking-wide mt-0.5">
                     Siatka: {m.grinding || '---'}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl font-black text-slate-900 tabular-nums">{m.weight}</span>
-                  <span className="text-xs text-slate-400 font-bold ml-1">kg</span>
+                  <span className="text-2xl font-black text-[#F8FAFC] tabular-nums">{m.weight}</span>
+                  <span className="text-xs text-[#94A3B8] font-bold ml-1">kg</span>
                 </div>
               </div>
             ))}
@@ -124,7 +124,7 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
       {/* Przyprawy — ciemne karty */}
       {calculations.spices.length > 0 && (
         <div className="px-4 mt-6">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+          <h3 className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest mb-3 flex items-center gap-2">
             <Zap size={12} /> Przyprawy
           </h3>
           <div className="space-y-2">
@@ -148,12 +148,12 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
       {/* Opis technologiczny */}
       {recipe.tech && (
         <div className="px-4 mt-6">
-          <div className="p-5 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
-            <h5 className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest">
+          <div className="p-5 bg-[#1E293B] border-2 border-dashed border-[#334155] rounded-3xl">
+            <h5 className="flex items-center gap-2 text-[10px] font-black uppercase text-[#94A3B8] mb-4 tracking-widest">
               <BookOpen size={13} /> Opis Technologiczny
             </h5>
             <div
-              className="text-sm text-slate-700 leading-relaxed font-medium italic"
+              className="text-sm text-slate-300 leading-relaxed font-medium italic"
               dangerouslySetInnerHTML={{ __html: formatTechText(recipe.tech) }}
             />
           </div>
@@ -165,7 +165,7 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
         {(recipe.ownerId === user?.uid || userProfile?.isAdmin) && (
           <button
             onClick={() => onEditRecipe(recipe)}
-            className="flex-1 py-4 bg-slate-100 text-slate-700 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+            className="flex-1 py-4 bg-[#334155] text-slate-200 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
           >
             <Edit3 size={15} /> Edytuj
           </button>

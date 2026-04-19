@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard } from 'lucide-react';
 
 const Header = ({ user, userProfile, activeTab, setActiveTab, setIsAuthModalOpen }) => (
-  <header className="no-print bg-[#111827] px-4 py-3 flex justify-between items-center sticky top-0 z-40">
+  <header className="no-print bg-[#0F172A] border-b border-[#334155] px-4 py-3 flex justify-between items-center sticky top-0 z-40">
     <div className="flex items-center gap-3">
       <div className="w-8 h-8 flex-none">
         <img src="/logo.svg" alt="Logo" className="w-full h-full" />

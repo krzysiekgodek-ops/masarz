@@ -42,7 +42,7 @@ const RecipeList = ({
             className={`flex-none px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-wide whitespace-nowrap transition-all ${
               selectedCategory === c
                 ? 'bg-[#DC2626] text-white shadow-md shadow-red-900/30'
-                : 'bg-[#111827] text-slate-300 border border-white/10'
+                : 'bg-[#1E293B] text-[#94A3B8] border border-[#334155]'
             }`}
           >
             {c}
@@ -57,7 +57,7 @@ const RecipeList = ({
           return (
             <div
               key={r.id}
-              className="relative flex items-center gap-4 p-3 bg-white rounded-2xl shadow-sm border border-slate-100 text-left"
+              className="relative flex items-center gap-4 p-3 bg-[#1E293B] rounded-2xl border border-[#334155] text-left"
             >
               {/* Serduszko — prawy górny róg */}
               <button
@@ -68,7 +68,7 @@ const RecipeList = ({
                 <Heart
                   size={17}
                   strokeWidth={2}
-                  className={isFav ? 'text-[#DC2626]' : 'text-slate-300 hover:text-[#DC2626] transition-colors'}
+                  className={isFav ? 'text-[#DC2626]' : 'text-[#475569] hover:text-[#DC2626] transition-colors'}
                   fill={isFav ? '#DC2626' : 'none'}
                 />
               </button>
@@ -78,7 +78,7 @@ const RecipeList = ({
                 onClick={() => onSelectRecipe?.(r)}
                 className="flex items-center gap-4 flex-1 min-w-0 active:scale-[0.98] transition-transform"
               >
-                <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-100 flex-none overflow-hidden flex items-center justify-center">
+                <div className="w-14 h-14 rounded-xl bg-[#0F172A] border border-[#334155] flex-none overflow-hidden flex items-center justify-center">
                   {r.imageUrl
                     ? <img src={r.imageUrl} className="w-full h-full object-cover" alt={r.name} />
                     : <ChefHat size={22} className="text-slate-200" />
@@ -86,12 +86,12 @@ const RecipeList = ({
                 </div>
                 <div className="flex-1 min-w-0 pr-8">
                   {r.ownerId === 'ADMIN' && (
-                    <span className="text-[9px] font-black bg-amber-50 text-amber-500 border border-amber-200 px-2 py-0.5 rounded-full uppercase inline-block mb-1">
+                    <span className="text-[9px] font-black bg-amber-900/20 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase inline-block mb-1">
                       ⭐ Wzorzec
                     </span>
                   )}
-                  <p className="font-black text-slate-900 text-sm leading-tight truncate">{r.name}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{r.category}</p>
+                  <p className="font-black text-[#F8FAFC] text-sm leading-tight truncate">{r.name}</p>
+                  <p className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider mt-0.5">{r.category}</p>
                 </div>
                 <ChevronRight />
               </button>
@@ -100,7 +100,7 @@ const RecipeList = ({
         })}
 
         {filtered.length === 0 && (
-          <p className="text-center text-slate-400 text-sm font-bold py-16">
+          <p className="text-center text-[#94A3B8] text-sm font-bold py-16">
             Brak receptur w tej kategorii
           </p>
         )}
