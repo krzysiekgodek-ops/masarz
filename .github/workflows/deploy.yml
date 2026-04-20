@@ -12,7 +12,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -31,12 +31,14 @@ jobs:
           VITE_STRIPE_LINK_MAXI: ${{ secrets.VITE_STRIPE_LINK_MAXI }}
           VITE_STRIPE_LINK_VIP: ${{ secrets.VITE_STRIPE_LINK_VIP }}
 
-      - name: Deploy via rsync
-        uses: Burnett01/rsync-deployments@7.0.1
+      - name: Deploy to FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          switches: -avzr --delete
-          path: ./dist/
-          remote_path: /usr/home/pluszek2026/domains/masarz.ebra.pl/public_html/
-          remote_host: ${{ secrets.SSH_HOST }}
-          remote_user: ${{ secrets.SSH_USER }}
-          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: /usr/home/pluszek2026/domains/masarz.ebra.pl/public_html/
+          exclude: |
+            **/.git*
+            **/.git*/**
