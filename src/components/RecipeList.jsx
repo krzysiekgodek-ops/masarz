@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ChefHat, Megaphone, Heart } from 'lucide-react';
+import { ChefHat, Heart } from 'lucide-react';
+import AdBanner from './AdBanner';
 
 const ChevronRight = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-300 flex-none">
@@ -25,13 +26,8 @@ const RecipeList = ({
 
   return (
     <div>
-      {/* Banery / komunikaty */}
-      {ads.filter(a => a.active).map(ad => (
-        <div key={ad.id} className="mx-4 mt-4 bg-[#DC2626] text-white px-4 py-3 rounded-2xl flex items-center gap-3">
-          <Megaphone size={15} className="flex-none" />
-          <p className="text-xs font-black uppercase tracking-wide leading-tight">{ad.content}</p>
-        </div>
-      ))}
+      {/* Banery reklamowe */}
+      <AdBanner ads={ads} />
 
       {/* Filtry kategorii */}
       <div className="flex gap-2 px-4 pt-4 pb-2 overflow-x-auto scrollbar-hide">

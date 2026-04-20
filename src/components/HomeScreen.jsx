@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
+import AdBanner from './AdBanner';
 
 const STORAGE_KEY = 'favorite_calculators';
 
@@ -75,14 +76,7 @@ const HomeScreen = ({ setActiveTab, ads }) => {
       )}
 
       {/* Banery reklamowe */}
-      {ads.filter(a => a.active).map(ad => (
-        <div key={ad.id} className="mb-3 bg-[#DC2626] text-white px-4 py-3 rounded-2xl flex items-center gap-3">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-none">
-            <path d="M3 11l19-9-9 19-2-8-8-2z"/>
-          </svg>
-          <p className="text-xs font-black uppercase tracking-wide leading-tight">{ad.content}</p>
-        </div>
-      ))}
+      <AdBanner ads={ads} />
 
       <h2 className="text-3xl font-black uppercase italic tracking-tighter text-[#F8FAFC] leading-none mb-2">Kalkulatory</h2>
       <p className="text-sm text-[#94A3B8] font-medium mb-6">Wybierz kalkulator, aby rozpocząć pracę</p>

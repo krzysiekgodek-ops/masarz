@@ -15,4 +15,5 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const SUPER_ROOT = 'krzysiekgodek@gmail.com';
-export const MYDEVIL_URL = 'https://www.masarz.ebra.pl/upload_image.php';
+export const MYDEVIL_URL     = 'https://www.masarz.ebra.pl/upload_image.php';
+export const MYDEVIL_PDF_URL = 'https://www.masarz.ebra.pl/upload_pdf.php';
