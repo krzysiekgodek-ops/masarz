@@ -10,6 +10,30 @@ const CALCULATORS = [
     name: 'Masarski Master',
     description: 'Receptury mięsne i wędliniarskie',
     active: true,
+    hasBanner: true,
+    banner: '/masarz-banner.jpg',
+    bannerTitle: 'Masarski Master',
+    bannerSub: 'Receptury mięsne',
+  },
+  {
+    id: 'piekarski',
+    name: 'Piekarski Mistrz',
+    description: 'Domowe receptury pieczywa',
+    active: false,
+    hasBanner: true,
+    banner: '/banner_piekarz.png',
+    bannerTitle: 'Piekarski Mistrz',
+    bannerSub: 'Otwieramy wkrótce!',
+  },
+  {
+    id: 'nalewki',
+    name: 'Mistrz Nalewek',
+    description: 'Receptury nalewek i nastawów',
+    active: false,
+    hasBanner: true,
+    banner: '/nalewki.png',
+    bannerTitle: 'Mistrz Nalewek',
+    bannerSub: 'Otwieramy wkrótce!',
   },
   {
     id: 'techniczny',
@@ -90,50 +114,49 @@ const HomeScreen = ({ setActiveTab, ads }) => {
               <button
                 onClick={() => handleCardClick(calc)}
                 className={`w-full text-left bg-[#1E293B] rounded-[2.5rem] border border-[#334155] overflow-hidden transition-all ${
-                  calc.active
-                    ? 'shadow-xl hover:shadow-2xl group'
-                    : 'opacity-50 grayscale'
+                  calc.active ? 'shadow-xl hover:shadow-2xl group' : 'opacity-60'
                 }`}
               >
-                {calc.active ? (
+                {calc.hasBanner ? (
                   <div className="relative w-full overflow-hidden" style={{ height: '200px' }}>
-                    {/* Zdjęcie banera */}
                     <img
-                      src="/masarz-banner.jpg"
-                      alt="Masarski Master"
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      src={calc.banner}
+                      alt={calc.name}
+                      className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ${calc.active ? 'group-hover:scale-105' : 'grayscale'}`}
                     />
-                    {/* Ciemny gradient po lewej */}
                     <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
-                    {/* Logo góra środek */}
-                    <img src="/logo.svg" alt="Logo" className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-12 drop-shadow z-10" />
-                    {/* Tekst po lewej */}
+                    {calc.active && (
+                      <img src="/logo.svg" alt="Logo" className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-12 drop-shadow z-10" />
+                    )}
                     <div className="absolute inset-0 flex flex-col justify-center px-7 gap-1">
                       <p className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none drop-shadow">
-                        Masarski Master
+                        {calc.bannerTitle}
                       </p>
-                      <p className="text-sm text-slate-300 font-medium">Receptury mięsne</p>
-                      <span className="mt-3 self-start bg-[#DC2626] text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest">
-                        Otwórz
+                      <p className="text-sm text-slate-300 font-medium">{calc.bannerSub}</p>
+                      <span className={`mt-3 self-start text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest ${
+                        calc.active
+                          ? 'bg-[#DC2626] text-white'
+                          : 'bg-[#334155] text-[#94A3B8]'
+                      }`}>
+                        {calc.active ? 'Otwórz' : 'Wkrótce'}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="h-28 bg-[#0F172A] flex items-center justify-center">
-                    {calc.icon}
-                  </div>
-                )}
-
-                {!calc.active && (
-                  <div className="p-6 flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="text-xl font-black uppercase italic tracking-tighter text-[#F8FAFC]">{calc.name}</h3>
-                      <p className="text-xs text-[#94A3B8] font-medium mt-1">{calc.description}</p>
+                  <>
+                    <div className="h-28 bg-[#0F172A] flex items-center justify-center grayscale">
+                      {calc.icon}
                     </div>
-                    <span className="shrink-0 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest bg-[#334155] text-[#94A3B8]">
-                      Wkrótce
-                    </span>
-                  </div>
+                    <div className="p-6 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="text-xl font-black uppercase italic tracking-tighter text-[#F8FAFC]">{calc.name}</h3>
+                        <p className="text-xs text-[#94A3B8] font-medium mt-1">{calc.description}</p>
+                      </div>
+                      <span className="shrink-0 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest bg-[#334155] text-[#94A3B8]">
+                        Wkrótce
+                      </span>
+                    </div>
+                  </>
                 )}
               </button>
 
