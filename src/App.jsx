@@ -280,11 +280,11 @@ const App = () => {
             allUsers={allUsers}
             categories={categories}
             ads={ads}
-            plans={plans}
+            allRecipes={userRecipesList}
             updatePlayerPlan={updatePlayerPlan}
             toggleAdmin={toggleAdmin}
             deleteUserAccount={deleteUserAccount}
-            updatePrice={updatePrice}
+            onAddRecipe={() => openRecipeModal(null)}
           />
         )}
       </main>

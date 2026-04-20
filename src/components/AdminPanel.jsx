@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { collection, doc, addDoc, deleteDoc, updateDoc, getDocs, query, where } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { Plus, Trash2, Tag, Megaphone, Power, ChevronDown, ChevronRight, Eye, Lock, Unlock, X } from 'lucide-react';
+import { Plus, Trash2, Megaphone, Power, ChevronDown, ChevronRight, Eye, Lock, Unlock, X, Users, CreditCard, BookOpen, UserPlus, Download, FileText } from 'lucide-react';
 import { auth, db, SUPER_ROOT } from '../firebase';
 
 const formatDate = (ts) => {
@@ -11,12 +11,59 @@ const formatDate = (ts) => {
   return '';
 };
 
-const AdminPanel = ({ allUsers, categories, ads, plans, updatePlayerPlan, toggleAdmin, deleteUserAccount, updatePrice }) => {
-  const [adminSubTab, setAdminSubTab]     = useState('users');
-  const [newCatName, setNewCatName]       = useState('');
+const StatCard = ({ icon: Icon, label, value, accent }) => (
+  <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-6 flex flex-col gap-3">
+    <div className="flex items-center gap-2">
+      <Icon size={16} className={accent ? 'text-[#DC2626]' : 'text-[#94A3B8]'} />
+      <span className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">{label}</span>
+    </div>
+    <span className="text-4xl font-black text-white">{value}</span>
+  </div>
+);
+
+const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPlan, toggleAdmin, deleteUserAccount, onAddRecipe }) => {
+  const [adminSubTab, setAdminSubTab]       = useState('dashboard');
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [userRecipesMap, setUserRecipesMap] = useState({});
-  const [previewRecipe, setPreviewRecipe] = useState(null);
+  const [previewRecipe, setPreviewRecipe]   = useState(null);
+
+  const userEmailMap = useMemo(() => {
+    const m = {};
+    allUsers.forEach(u => { m[u.id] = u.email; });
+    return m;
+  }, [allUsers]);
+
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+  const stats = useMemo(() => ({
+    totalUsers: allUsers.length,
+    activeSubscriptions: allUsers.filter(u => u.plan && u.plan !== 'free').length,
+    totalRecipes: allRecipes.length,
+    newUsersWeek: allUsers.filter(u => {
+      if (!u.createdAt) return false;
+      const ts = u.createdAt.seconds ? u.createdAt.seconds * 1000 : Number(u.createdAt);
+      return ts >= sevenDaysAgo;
+    }).length,
+  }), [allUsers, allRecipes]);
+
+  const recentUsers = useMemo(() =>
+    [...allUsers]
+      .filter(u => u.createdAt)
+      .sort((a, b) => {
+        const ta = a.createdAt.seconds ?? 0;
+        const tb = b.createdAt.seconds ?? 0;
+        return tb - ta;
+      })
+      .slice(0, 10),
+    [allUsers]
+  );
+
+  const pendingRecipes = useMemo(() =>
+    allRecipes.filter(r => r.ownerId !== 'ADMIN' && !r.blocked),
+    [allRecipes]
+  );
+
+  const activeAds = useMemo(() => ads.filter(ad => ad.active), [ads]);
 
   const loadUserRecipes = async (userId) => {
     if (userRecipesMap[userId]) return;
@@ -42,25 +89,162 @@ const AdminPanel = ({ allUsers, categories, ads, plans, updatePlayerPlan, toggle
       }
       return updated;
     });
-    if (previewRecipe?.id === recipeId) {
-      setPreviewRecipe(p => ({ ...p, blocked: block }));
-    }
+    if (previewRecipe?.id === recipeId) setPreviewRecipe(p => ({ ...p, blocked: block }));
   };
+
+  const exportUsersCSV = () => {
+    const header = 'email,plan,createdAt';
+    const rows = allUsers.map(u => `${u.email},${u.plan || 'free'},${formatDate(u.createdAt)}`);
+    const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'uzytkownicy.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'users',     label: 'Użytkownicy' },
+    { id: 'ads',       label: 'Reklamy' },
+  ];
 
   return (
     <main className="max-w-7xl mx-auto p-4 md:p-10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
 
       {/* Nagłówek + zakładki */}
-      <div className="flex justify-between items-center mb-12">
+      <div className="flex justify-between items-center mb-12 flex-wrap gap-4">
         <div className="flex bg-[#0F172A] border border-[#334155] p-1.5 rounded-3xl w-fit">
-          <button onClick={() => setAdminSubTab('users')} className={`px-8 py-3 rounded-2xl text-xs font-black uppercase transition-all ${adminSubTab === 'users' ? 'bg-[#1E293B] shadow text-red-500' : 'text-[#64748B]'}`}>Użytkownicy</button>
-          <button onClick={() => setAdminSubTab('pricing')} className={`px-8 py-3 rounded-2xl text-xs font-black uppercase transition-all ${adminSubTab === 'pricing' ? 'bg-[#1E293B] shadow text-red-500' : 'text-[#64748B]'}`}>Cennik & Kategorie</button>
-          <button onClick={() => setAdminSubTab('ads')} className={`px-8 py-3 rounded-2xl text-xs font-black uppercase transition-all ${adminSubTab === 'ads' ? 'bg-[#1E293B] shadow text-red-500' : 'text-[#64748B]'}`}>Reklamy</button>
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setAdminSubTab(t.id)}
+              className={`px-8 py-3 rounded-2xl text-xs font-black uppercase transition-all ${adminSubTab === t.id ? 'bg-[#1E293B] shadow text-red-500' : 'text-[#64748B]'}`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
         <button onClick={() => signOut(auth)} className="flex items-center gap-2 px-6 py-3 bg-red-900/20 text-red-400 rounded-2xl font-black uppercase text-xs hover:bg-red-600 hover:text-white transition-all border border-red-900/30">
           <Power size={18} /> Wyloguj
         </button>
       </div>
+
+      {/* ── DASHBOARD ───────────────────────────────────────────────────────── */}
+      {adminSubTab === 'dashboard' && (
+        <div className="space-y-8">
+
+          {/* Wiersz 1 — Statystyki */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={Users}        label="Wszyscy użytkownicy"    value={stats.totalUsers} />
+            <StatCard icon={CreditCard}   label="Aktywne subskrypcje"    value={stats.activeSubscriptions} accent />
+            <StatCard icon={BookOpen}     label="Receptury w systemie"   value={stats.totalRecipes} />
+            <StatCard icon={UserPlus}     label="Nowi (ostatnie 7 dni)"  value={stats.newUsersWeek} />
+          </div>
+
+          {/* Wiersz 2 — Ostatni zarejestrowani */}
+          <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-6">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] mb-4">Ostatnio zarejestrowani (10)</p>
+            <div className="divide-y divide-[#334155]">
+              {recentUsers.length === 0 && (
+                <p className="text-xs text-[#94A3B8] py-4 text-center">Brak danych</p>
+              )}
+              {recentUsers.map(u => (
+                <div key={u.id} className="flex items-center justify-between py-3">
+                  <span className="text-sm font-bold text-white truncate flex-1 pr-4">{u.email}</span>
+                  <span className="text-[10px] text-[#94A3B8] font-bold shrink-0 mr-4">{formatDate(u.createdAt)}</span>
+                  <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full shrink-0 ${u.plan && u.plan !== 'free' ? 'bg-red-900/30 text-red-400' : 'bg-[#334155] text-[#94A3B8]'}`}>
+                    {u.plan || 'free'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Wiersz 3 — Moderacja + Aktywne reklamy */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-6">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] mb-4">
+                Receptury do moderacji ({pendingRecipes.length})
+              </p>
+              {pendingRecipes.length === 0 ? (
+                <p className="text-xs text-[#94A3B8] py-4 text-center font-bold uppercase">Brak receptur</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {pendingRecipes.map(r => (
+                    <div key={r.id} className="flex items-center justify-between p-3 bg-[#0F172A] border border-[#334155] rounded-2xl">
+                      <div className="min-w-0 flex-1 pr-2">
+                        <p className="font-bold text-sm text-white truncate">{r.name}</p>
+                        <p className="text-[10px] text-[#94A3B8]">
+                          {userEmailMap[r.ownerId] || r.ownerId}
+                          {formatDate(r.updatedAt) ? ` · ${formatDate(r.updatedAt)}` : ''}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleBlockRecipe(r.id, true)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-red-900/20 text-red-400 rounded-xl text-[9px] font-black uppercase hover:bg-red-600 hover:text-white transition-all shrink-0"
+                      >
+                        <Lock size={10} /> Zablokuj
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-6">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] mb-4">
+                Aktywne reklamy ({activeAds.length})
+              </p>
+              {activeAds.length === 0 ? (
+                <p className="text-xs text-[#94A3B8] py-4 text-center font-bold uppercase">Brak aktywnych reklam</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {activeAds.map(ad => (
+                    <div key={ad.id} className="flex items-center gap-3 p-3 bg-[#0F172A] border border-[#334155] rounded-2xl">
+                      <p className="text-sm text-white flex-1 truncate">{ad.content}</p>
+                      <button
+                        onClick={() => updateDoc(doc(db, 'ads', ad.id), { active: false })}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-[#334155] text-[#94A3B8] rounded-xl text-[9px] font-black uppercase hover:bg-[#475569] transition-all shrink-0"
+                      >
+                        <Megaphone size={10} /> Wyłącz
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Wiersz 4 — Szybkie akcje */}
+          <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-6">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] mb-4">Szybkie akcje</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => onAddRecipe?.()}
+                className="flex items-center gap-2 px-5 py-3 bg-[#DC2626] text-white rounded-2xl text-xs font-black uppercase hover:bg-red-700 transition-all"
+              >
+                <Plus size={14} /> Dodaj recepturę wzorcową
+              </button>
+              <button
+                onClick={() => addDoc(collection(db, 'ads'), { content: 'Nowy komunikat...', active: true })}
+                className="flex items-center gap-2 px-5 py-3 bg-[#334155] text-[#94A3B8] rounded-2xl text-xs font-black uppercase hover:bg-[#475569] hover:text-white transition-all"
+              >
+                <Megaphone size={14} /> Dodaj reklamę
+              </button>
+              <button
+                onClick={exportUsersCSV}
+                className="flex items-center gap-2 px-5 py-3 bg-[#334155] text-[#94A3B8] rounded-2xl text-xs font-black uppercase hover:bg-[#475569] hover:text-white transition-all"
+              >
+                <Download size={14} /> Eksportuj użytkowników
+              </button>
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* ── UŻYTKOWNICY ─────────────────────────────────────────────────────── */}
       {adminSubTab === 'users' && (
@@ -181,62 +365,6 @@ const AdminPanel = ({ allUsers, categories, ads, plans, updatePlayerPlan, toggle
 
               </React.Fragment>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── CENNIK & KATEGORIE ──────────────────────────────────────────────── */}
-      {adminSubTab === 'pricing' && plans && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div className="bg-[#1E293B] border border-[#334155] p-10 rounded-[3rem] shadow-xl text-left">
-            <h3 className="text-xl font-black uppercase mb-8 text-red-500">Cennik</h3>
-            {['mini', 'midi', 'max'].map(k => (
-              <div key={k} className="mb-6 bg-[#0F172A] border border-[#334155] p-6 rounded-3xl">
-                <p className="text-[10px] font-black uppercase text-[#94A3B8] mb-2">{k}</p>
-                <div className="flex gap-4">
-                  <input className="bg-[#1E293B] border border-[#334155] text-[#F8FAFC] p-3 rounded-xl flex-1 font-bold outline-none focus:border-red-600" value={plans.food[k].price} onChange={e => updatePrice('food', k, { ...plans.food[k], price: e.target.value })} />
-                  <input className="bg-[#1E293B] border border-[#334155] text-[#F8FAFC] p-3 rounded-xl w-24 text-center font-black outline-none focus:border-red-600" type="number" value={plans.food[k].limit} onChange={e => updatePrice('food', k, { ...plans.food[k], limit: Number(e.target.value) })} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-[#0F172A] border border-[#334155] p-10 rounded-[3rem] text-white shadow-2xl">
-            <h3 className="text-xl font-black uppercase mb-8 text-red-500 flex items-center gap-2"><Tag /> Kategorie Globalne</h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto mb-6 pr-2">
-              {categories.map(c => (
-                <div key={c} className="flex justify-between items-center bg-[#1E293B] border border-[#334155] p-4 rounded-2xl group">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#F8FAFC]">{c}</span>
-                  <button
-                    onClick={async () => {
-                      const snap = await getDocs(query(collection(db, 'categories'), where('name', '==', c)));
-                      await Promise.all(snap.docs.map(d => deleteDoc(doc(db, 'categories', d.id))));
-                    }}
-                    className="text-red-400 opacity-50 group-hover:opacity-100 p-2 transition-opacity"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                placeholder="Nowa kategoria..."
-                className="bg-[#1E293B] border border-[#334155] rounded-xl p-4 text-xs w-full text-white outline-none focus:border-red-600 placeholder-[#475569]"
-                value={newCatName}
-                onChange={e => setNewCatName(e.target.value)}
-              />
-              <button
-                onClick={async () => {
-                  if (!newCatName) return;
-                  await addDoc(collection(db, 'categories'), { name: newCatName });
-                  setNewCatName('');
-                }}
-                className="bg-red-600 p-4 rounded-xl hover:bg-red-700 transition-all"
-              >
-                <Plus />
-              </button>
-            </div>
           </div>
         </div>
       )}
