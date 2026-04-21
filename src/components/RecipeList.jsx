@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChefHat, Heart } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import AdBanner from './AdBanner';
 
 const ChevronRight = () => (
@@ -47,22 +47,22 @@ const RecipeList = ({
       </div>
 
       {/* Karty receptur */}
-      <div className="px-4 pb-4 space-y-2">
+      <div className="px-4 pb-4 grid grid-cols-2 gap-2">
         {filtered.map(r => {
           const isFav = favoriteIds.includes(r.id);
           return (
             <div
               key={r.id}
-              className="relative flex items-center gap-4 p-3 bg-[#1E293B] rounded-2xl border border-[#334155] text-left"
+              className="relative bg-[#1E293B] rounded-2xl border border-[#334155] overflow-hidden"
             >
               {/* Serduszko — prawy górny róg */}
               <button
                 onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(r.id); }}
-                className="absolute top-2.5 right-2.5 z-10 p-1.5 rounded-xl transition-all"
+                className="absolute top-2 right-2 z-10 p-1.5 rounded-xl transition-all"
                 aria-label={isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
               >
                 <Heart
-                  size={17}
+                  size={16}
                   strokeWidth={2}
                   className={isFav ? 'text-[#DC2626]' : 'text-[#475569] hover:text-[#DC2626] transition-colors'}
                   fill={isFav ? '#DC2626' : 'none'}
@@ -72,24 +72,28 @@ const RecipeList = ({
               {/* Klikalna część — otwiera kalkulator */}
               <button
                 onClick={() => onSelectRecipe?.(r)}
-                className="flex items-center gap-4 flex-1 min-w-0 active:scale-[0.98] transition-transform"
+                className="flex flex-col w-full text-left active:scale-[0.98] transition-transform"
               >
-                <div className="w-14 h-14 rounded-xl bg-[#0F172A] border border-[#334155] flex-none overflow-hidden flex items-center justify-center">
+                <div className="w-full aspect-square border-b border-[#334155] overflow-hidden">
                   {r.imageUrl
-                    ? <img src={r.imageUrl} className="w-full h-full object-cover" alt={r.name} />
-                    : <ChefHat size={22} className="text-slate-200" />
+                    ? <img
+                        src={r.imageUrl}
+                        className="w-full h-full object-cover"
+                        alt={r.name}
+                        onError={e => { e.currentTarget.src = '/masarz-banner.jpg'; e.currentTarget.style.objectPosition = '85% 15%'; }}
+                      />
+                    : <img src="/masarz-banner.jpg" className="w-full h-full object-cover" style={{ objectPosition: '85% 15%' }} alt="kiełbasy" />
                   }
                 </div>
-                <div className="flex-1 min-w-0 pr-8">
+                <div className="p-2.5">
                   {r.ownerId === 'ADMIN' && (
-                    <span className="text-[9px] font-black bg-amber-900/20 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase inline-block mb-1">
+                    <span className="text-[8px] font-black bg-amber-900/20 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-full uppercase inline-block mb-1">
                       ⭐ Wzorzec
                     </span>
                   )}
-                  <p className="font-black text-[#F8FAFC] text-sm leading-tight truncate">{r.name}</p>
-                  <p className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider mt-0.5">{r.category}</p>
+                  <p className="font-black text-[#F8FAFC] text-xs leading-tight line-clamp-2">{r.name}</p>
+                  <p className="text-[9px] font-bold text-[#94A3B8] uppercase tracking-wider mt-0.5">{r.category}</p>
                 </div>
-                <ChevronRight />
               </button>
             </div>
           );

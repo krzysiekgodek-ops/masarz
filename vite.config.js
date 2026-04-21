@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.svg', 'bild/front.jpg'],
+      includeAssets: ['logo.svg'],
       manifest: {
         name: 'Masarski Master',
         short_name: 'Masarski',
