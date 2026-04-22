@@ -119,7 +119,7 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave }) => {
 
             <div className="flex justify-between items-center font-black uppercase text-[#94A3B8] ml-2 tracking-widest mt-6">
               Przyprawy (g/kg)
-              <button onClick={() => setFormRecipe({ ...formRecipe, spices: [...formRecipe.spices, { name: '', perKg: 0, unit: 'g' }] })} className="p-2 bg-[#334155] text-[#F8FAFC] rounded-lg shadow-lg"><Plus size={16} /></button>
+              <button onClick={() => setFormRecipe({ ...formRecipe, spices: [{ name: '', perKg: 0, unit: 'g' }, ...formRecipe.spices] })} className="p-2 bg-[#334155] text-[#F8FAFC] rounded-lg shadow-lg"><Plus size={16} /></button>
             </div>
             {formRecipe.spices.map((s, i) => (
               <div key={i} className="flex gap-2">

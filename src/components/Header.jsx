@@ -1,16 +1,28 @@
 import React from 'react';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Cog } from 'lucide-react';
 
 const Header = ({ user, userProfile, activeTab, setActiveTab, setIsAuthModalOpen }) => (
   <header className="no-print bg-[#0F172A] border-b border-[#334155] px-4 py-3 flex justify-between items-center sticky top-0 z-40">
-    <div className="flex items-center gap-3">
-      <div className="w-8 h-8 flex-none">
-        <img src="/logo.svg" alt="Logo" className="w-full h-full" />
+    <a
+      href="https://www.ebra.pl"
+      className="flex items-center gap-2 cursor-pointer select-none no-underline"
+      style={{ textDecoration: 'none' }}
+    >
+      <Cog
+        size={26}
+        color="#c9a227"
+        strokeWidth={1.75}
+        style={{ animation: 'ebra-gear-spin 8s linear infinite', flexShrink: 0 }}
+      />
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, gap: '2px' }}>
+        <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: '1.2rem', letterSpacing: '0.06em', color: '#fff' }}>
+          EBRA
+        </span>
+        <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#64748b' }}>
+          Kalkulatory
+        </span>
       </div>
-      <span className="font-black text-white text-[15px] uppercase tracking-tight leading-none">
-        Masarski Master
-      </span>
-    </div>
+    </a>
 
     <div className="flex items-center gap-2">
       {userProfile?.isAdmin && (
