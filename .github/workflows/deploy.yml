@@ -38,7 +38,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: /public_html/
+          server-dir: /usr/home/pluszek2026/domains/masarz.ebra.pl/public_html/
           exclude: |
             **/.git*
             **/.git*/**
