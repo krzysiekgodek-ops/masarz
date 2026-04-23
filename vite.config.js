@@ -8,6 +8,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.svg'],
+      prompt: true,
       manifest: {
         name: 'Masarski Master',
         short_name: 'Masarski',
