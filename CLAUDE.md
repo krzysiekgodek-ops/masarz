@@ -16,14 +16,15 @@ No test suite exists in this project.
 ```bash
 firebase deploy --only firestore:rules   # deploy Firestore rules
 firebase deploy --only firestore:indexes # deploy indexes
+firebase deploy --only functions         # deploy Cloud Functions
 ```
-Firebase hosting is NOT configured — `dist/` is deployed to mydevil hosting via GitHub Actions FTP (`.github/workflows/deploy.yml`).
+Firebase hosting is NOT configured (`firebase.json` only declares `firestore`) — `dist/` is deployed to mydevil hosting via GitHub Actions FTP (`.github/workflows/deploy.yml`).
+
+Cloud Function secrets are set via `firebase functions:config:set stripe.secret_key=...` (not env vars).
 
 ## Project Overview
 
 **Masarski Master** (EBRA Rzemiosło) is a butcher's recipe management web application built as a Vite/React SPA.
-
-> `masarz.txt` in the project root is an **old backup** — do not read or modify it.
 
 ## Architecture
 
@@ -76,7 +77,11 @@ There is no React Router. Routing is manual in `src/main.jsx`:
 
 **Stripe plans** (`src/stripe.js`): `mini` / `midi` / `maxi` / `vip` — used for payment links. After successful payment Stripe redirects to `/success?plan=<id>`, where `SuccessPage` writes the plan ID into `users/{uid}.plan` in Firestore.
 
-Environment variables required for Stripe:
+Two Stripe checkout flows coexist:
+1. **Client-side payment links** (`src/stripe.js`) — `paymentLink` URLs from `VITE_STRIPE_LINK_*` env vars; this is the active flow the UI opens.
+2. **Server-side Checkout Session** — `functions/index.js` exports a callable `createCheckoutSession` (firebase-functions v4, region `europe-central2`, Node 18) that creates a subscription session using `stripe.secret_key` from functions config. Alternate flow kept alongside the payment links.
+
+Environment variables required for Stripe payment links:
 ```
 VITE_STRIPE_LINK_MINI=
 VITE_STRIPE_LINK_MIDI=

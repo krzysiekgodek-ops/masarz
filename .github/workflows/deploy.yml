@@ -31,14 +31,13 @@ jobs:
           VITE_STRIPE_LINK_MAXI: ${{ secrets.VITE_STRIPE_LINK_MAXI }}
           VITE_STRIPE_LINK_VIP: ${{ secrets.VITE_STRIPE_LINK_VIP }}
 
-      - name: Deploy to FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy via SCP
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
-          server-dir: /usr/home/pluszek2026/domains/masarz.ebra.pl/public_html/
-          exclude: |
-            **/.git*
-            **/.git*/**
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: "dist/*"
+          target: "/usr/home/pluszek2026/domains/masarz.ebra.pl/public_html/"
+          strip_components: 1
