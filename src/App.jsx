@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, setDoc, getDoc, onSnapshot, query, where, addDoc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db, SUPER_ROOT } from './firebase';
+import useTheme from './hooks/useTheme';
 
 import Header     from './components/Header';
 import BottomNav  from './components/BottomNav';
@@ -19,6 +20,8 @@ const DEFAULT_PLANS = {
 };
 
 const App = () => {
+  const { theme, toggleTheme } = useTheme();
+
   // ── Dane globalne ──────────────────────────────────────────────────────────
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -185,7 +188,7 @@ const App = () => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0F172A] text-[#F8FAFC] font-sans">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans">
       <style>{`
         @media print {
           .no-print, header, footer, nav, .trial-banner { display: none !important; }
@@ -201,6 +204,8 @@ const App = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         setIsAuthModalOpen={setIsAuthModalOpen}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
 
       {/* Główna treść — padding-bottom dla bottom nav */}

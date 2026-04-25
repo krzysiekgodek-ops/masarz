@@ -19,7 +19,7 @@ const BottomNav = ({ activeTab, setActiveTab, user, setIsAuthModalOpen }) => {
 
   return (
     <nav
-      className="no-print fixed bottom-0 left-0 right-0 z-40 bg-[#0F172A] border-t border-[#334155]"
+      className="no-print fixed bottom-0 left-0 right-0 z-40 bg-[var(--bg-card)] border-t border-[var(--border)]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex">
@@ -30,7 +30,7 @@ const BottomNav = ({ activeTab, setActiveTab, user, setIsAuthModalOpen }) => {
               key={id}
               onClick={() => handleTab(id)}
               className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${
-                active ? 'text-red-600' : 'text-[#64748B] hover:text-slate-300'
+                active ? 'text-red-600' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
               }`}
             >
               <Icon
@@ -38,7 +38,7 @@ const BottomNav = ({ activeTab, setActiveTab, user, setIsAuthModalOpen }) => {
                 strokeWidth={active ? 2.5 : 1.5}
                 fill={active && id === 'my' ? 'currentColor' : 'none'}
               />
-              <span className={`text-[9px] font-black uppercase tracking-wider ${active ? 'text-red-600' : 'text-[#64748B]'}`}>
+              <span className={`text-[9px] font-black uppercase tracking-wider ${active ? 'text-red-600' : 'text-[var(--text-dim)]'}`}>
                 {label}
               </span>
             </button>

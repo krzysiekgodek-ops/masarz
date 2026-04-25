@@ -1,8 +1,8 @@
 import React from 'react';
 import { LayoutDashboard, Cog } from 'lucide-react';
 
-const Header = ({ user, userProfile, activeTab, setActiveTab, setIsAuthModalOpen }) => (
-  <header className="no-print bg-[#0F172A] border-b border-[#334155] px-4 py-3 flex justify-between items-center sticky top-0 z-40">
+const Header = ({ user, userProfile, activeTab, setActiveTab, setIsAuthModalOpen, theme, toggleTheme }) => (
+  <header className="no-print bg-[var(--bg-card)] border-b border-[var(--border)] px-4 py-3 flex justify-between items-center sticky top-0 z-40">
     <a
       href="https://www.ebra.pl"
       className="flex items-center gap-2 cursor-pointer select-none no-underline"
@@ -15,21 +15,29 @@ const Header = ({ user, userProfile, activeTab, setActiveTab, setIsAuthModalOpen
         style={{ animation: 'ebra-gear-spin 8s linear infinite', flexShrink: 0 }}
       />
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, gap: '2px' }}>
-        <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: '1.2rem', letterSpacing: '0.06em', color: '#fff' }}>
+        <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: '1.2rem', letterSpacing: '0.06em', color: 'var(--text)' }}>
           EBRA
         </span>
-        <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#64748b' }}>
+        <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
           Kalkulatory
         </span>
       </div>
     </a>
 
     <div className="flex items-center gap-2">
+      <button
+        onClick={toggleTheme}
+        className="p-2 rounded-xl text-[var(--text-dim)] hover:text-[var(--text)] transition-colors text-base leading-none"
+        aria-label="Przełącz motyw"
+      >
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
+
       {userProfile?.isAdmin && (
         <button
           onClick={() => setActiveTab(activeTab === 'superadmin' ? 'recipes' : 'superadmin')}
           className={`p-2 rounded-xl transition-colors ${
-            activeTab === 'superadmin' ? 'bg-[#DC2626] text-white' : 'text-slate-500 hover:text-slate-300'
+            activeTab === 'superadmin' ? 'bg-[#DC2626] text-white' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
           }`}
         >
           <LayoutDashboard size={18} />

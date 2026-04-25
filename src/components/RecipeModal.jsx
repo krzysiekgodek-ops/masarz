@@ -53,34 +53,37 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave }) => {
 
   const totalMeatKg = formRecipe.meats.reduce((acc, m) => acc + Number(m.val ?? m.percentage ?? 0), 0).toFixed(2);
 
-  const inputCls = "w-full p-5 border-2 border-[#334155] rounded-2xl font-bold bg-[#0F172A] text-[#F8FAFC] placeholder-[#475569] focus:border-red-600 outline-none";
-  const smInputCls = "p-3 border-2 border-[#334155] rounded-xl font-bold bg-[#0F172A] text-[#F8FAFC] placeholder-[#475569] outline-none";
+  const inputCls = "w-full p-5 border-2 border-[var(--border)] rounded-2xl font-bold bg-[var(--bg)] text-[var(--text)] placeholder-[var(--text-dim)] focus:border-red-600 outline-none";
+  const smInputCls = "p-3 border-2 border-[var(--border)] rounded-xl font-bold bg-[var(--bg)] text-[var(--text)] placeholder-[var(--text-dim)] outline-none";
 
   return (
-    <div className="no-print fixed inset-0 bg-[#0F172A]/95 z-50 flex items-center justify-center p-4 backdrop-blur-xl animate-in zoom-in-95 duration-200">
-      <div className="bg-[#1E293B] border border-[#334155] rounded-[4rem] w-full max-w-7xl max-h-[90vh] overflow-y-auto p-10 relative">
-        <button onClick={onClose} className="absolute top-8 right-8 p-2 bg-[#334155] text-[#94A3B8] hover:text-[#F8FAFC] rounded-full transition-colors"><X /></button>
-        <h2 className="text-3xl font-black uppercase mb-10 italic text-left leading-none tracking-tighter text-[#F8FAFC]">Zarządzanie Recepturą</h2>
+    <div
+      className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl animate-in zoom-in-95 duration-200"
+      style={{ background: 'var(--bg-overlay)' }}
+    >
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-[4rem] w-full max-w-7xl max-h-[90vh] overflow-y-auto p-10 relative">
+        <button onClick={onClose} className="absolute top-8 right-8 p-2 bg-[var(--bg-input)] text-[var(--text-dim)] hover:text-[var(--text)] rounded-full transition-colors"><X /></button>
+        <h2 className="text-3xl font-black uppercase mb-10 italic text-left leading-none tracking-tighter text-[var(--text)]">Zarządzanie Recepturą</h2>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 text-left text-[#F8FAFC]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 text-left text-[var(--text)]">
           {/* Lewa kolumna — metadane */}
           <div className="space-y-4">
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-[#94A3B8] uppercase ml-4">Nazwa wyrobu</p>
+              <p className="text-[10px] font-black text-[var(--text-dim)] uppercase ml-4">Nazwa wyrobu</p>
               <input placeholder="Np. Krakowska Sucha" className={inputCls} value={formRecipe.name} onChange={e => setFormRecipe({ ...formRecipe, name: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-[#94A3B8] uppercase ml-4">Kategoria</p>
+              <p className="text-[10px] font-black text-[var(--text-dim)] uppercase ml-4">Kategoria</p>
               <select className={`${inputCls} cursor-pointer`} value={formRecipe.category} onChange={e => setFormRecipe({ ...formRecipe, category: e.target.value })}>
                 <option value="">Wybierz...</option>
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-[#94A3B8] uppercase ml-4 leading-none">Proces (użyj **pogrubienie**)</p>
+              <p className="text-[10px] font-black text-[var(--text-dim)] uppercase ml-4 leading-none">Proces (użyj **pogrubienie**)</p>
               <textarea placeholder="Opis procesu produkcyjnego..." className={`${inputCls} h-64`} value={formRecipe.tech} onChange={e => setFormRecipe({ ...formRecipe, tech: e.target.value })} />
             </div>
-            <div className="bg-[#0F172A] p-6 rounded-[2.5rem] border-2 border-dashed border-[#334155] text-center min-h-[140px] flex items-center justify-center relative overflow-hidden text-[#475569]">
+            <div className="bg-[var(--bg)] p-6 rounded-[2.5rem] border-2 border-dashed border-[var(--border)] text-center min-h-[140px] flex items-center justify-center relative overflow-hidden text-[var(--text-dim)]">
               {formRecipe.imageUrl ? (
                 <>
                   <img src={formRecipe.imageUrl} className="w-full h-32 object-cover rounded-2xl shadow-lg" alt="Podgląd" />
@@ -98,7 +101,7 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave }) => {
 
           {/* Prawa kolumna — składniki */}
           <div className="space-y-6">
-            <div className="flex justify-between items-center font-black uppercase text-[#94A3B8] ml-2 tracking-widest">
+            <div className="flex justify-between items-center font-black uppercase text-[var(--text-dim)] ml-2 tracking-widest">
               Wprowadź Surowce (KG)
               <button onClick={() => setFormRecipe({ ...formRecipe, meats: [...formRecipe.meats, { name: '', val: 0, grinding: '' }] })} className="p-2 bg-red-600 text-white rounded-lg shadow-lg"><Plus size={16} /></button>
             </div>
@@ -108,18 +111,18 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave }) => {
                 <input placeholder="Sitko" className={`w-24 text-center text-xs ${smInputCls}`} value={m.grinding} onChange={e => updateMeat(i, 'grinding', e.target.value)} />
                 <div className="relative">
                   <input type="number" className={`w-24 text-center font-black text-red-500 pr-6 ${smInputCls}`} value={m.val ?? m.percentage ?? ''} onChange={e => updateMeat(i, 'val', e.target.value)} />
-                  <span className="absolute right-2 top-3.5 text-[8px] font-black text-[#475569]">KG</span>
+                  <span className="absolute right-2 top-3.5 text-[8px] font-black text-[var(--text-dim)]">KG</span>
                 </div>
                 <button onClick={() => { const l = [...formRecipe.meats]; l.splice(i, 1); setFormRecipe({ ...formRecipe, meats: l }); }} className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
               </div>
             ))}
-            <div className="bg-[#0F172A] border border-[#334155] p-4 rounded-2xl text-[10px] font-black uppercase text-[#94A3B8] flex justify-between">
+            <div className="bg-[var(--bg)] border border-[var(--border)] p-4 rounded-2xl text-[10px] font-black uppercase text-[var(--text-dim)] flex justify-between">
               <span>Suma wag:</span><span className="text-red-500">{totalMeatKg} KG</span>
             </div>
 
-            <div className="flex justify-between items-center font-black uppercase text-[#94A3B8] ml-2 tracking-widest mt-6">
+            <div className="flex justify-between items-center font-black uppercase text-[var(--text-dim)] ml-2 tracking-widest mt-6">
               Przyprawy (g/kg)
-              <button onClick={() => setFormRecipe({ ...formRecipe, spices: [{ name: '', perKg: 0, unit: 'g' }, ...formRecipe.spices] })} className="p-2 bg-[#334155] text-[#F8FAFC] rounded-lg shadow-lg"><Plus size={16} /></button>
+              <button onClick={() => setFormRecipe({ ...formRecipe, spices: [{ name: '', perKg: 0, unit: 'g' }, ...formRecipe.spices] })} className="p-2 bg-[var(--bg-input)] text-[var(--text)] rounded-lg shadow-lg"><Plus size={16} /></button>
             </div>
             {formRecipe.spices.map((s, i) => (
               <div key={i} className="flex gap-2">

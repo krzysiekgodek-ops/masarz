@@ -56,9 +56,9 @@ const AdBanner = ({ ads }) => {
 
   return (
     <div
-      className={`relative mx-4 mt-3 rounded-2xl overflow-hidden border border-[#334155] transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'} ${hasLink ? 'cursor-pointer' : ''}`}
+      className={`relative mx-4 mt-3 rounded-2xl overflow-hidden border border-[var(--border)] transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'} ${hasLink ? 'cursor-pointer' : ''}`}
       onClick={hasLink ? handleClick : undefined}
-      style={{ background: '#1E293B' }}
+      style={{ background: 'var(--bg-card)' }}
     >
       {/* Zdjęcie banera */}
       {ad.imageUrl && (
@@ -73,7 +73,7 @@ const AdBanner = ({ ads }) => {
             <div className="absolute inset-0 flex flex-col justify-end p-4 gap-1">
               <p className="text-sm font-black text-white uppercase tracking-wide leading-tight drop-shadow">{title}</p>
               {hasLink && (
-                <div className="flex items-center gap-1 text-[#94A3B8] text-[10px] font-bold">
+                <div className="flex items-center gap-1 text-[var(--text-dim)] text-[10px] font-bold">
                   {isPdf ? <FileText size={10} /> : <ExternalLink size={10} />}
                   <span>{isPdf ? 'Otwórz PDF' : 'Dowiedz się więcej'}</span>
                 </div>
@@ -87,9 +87,9 @@ const AdBanner = ({ ads }) => {
       {!ad.imageUrl && (
         <div className="flex items-center gap-3 px-4 py-3">
           <div className="w-2 h-2 rounded-full bg-[#DC2626] shrink-0" />
-          <p className="text-xs font-black uppercase tracking-wide text-[#F8FAFC] flex-1 leading-tight">{title}</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[var(--text)] flex-1 leading-tight">{title}</p>
           {hasLink && (
-            <span className="text-[#94A3B8] shrink-0">
+            <span className="text-[var(--text-dim)] shrink-0">
               {isPdf ? <FileText size={13} /> : <ExternalLink size={13} />}
             </span>
           )}

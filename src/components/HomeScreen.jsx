@@ -41,7 +41,7 @@ const CALCULATORS = [
     description: 'Obliczenia technologiczne',
     active: false,
     icon: (
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[var(--text-dim)]">
         <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/>
       </svg>
     ),
@@ -52,7 +52,7 @@ const CALCULATORS = [
     description: 'Kalkulator serwisowy',
     active: false,
     icon: (
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[var(--text-dim)]">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
       </svg>
     ),
@@ -94,7 +94,7 @@ const HomeScreen = ({ setActiveTab, ads }) => {
     <div className="p-5 pt-6">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-full shadow-lg tracking-wide pointer-events-none">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[var(--bg-input)] text-[var(--text)] text-xs font-bold px-5 py-2.5 rounded-full shadow-lg tracking-wide pointer-events-none">
           Wkrótce dostępne
         </div>
       )}
@@ -102,8 +102,8 @@ const HomeScreen = ({ setActiveTab, ads }) => {
       {/* Banery reklamowe */}
       <AdBanner ads={ads} />
 
-      <h2 className="text-3xl font-black uppercase italic tracking-tighter text-[#F8FAFC] leading-none mb-2">Kalkulatory</h2>
-      <p className="text-sm text-[#94A3B8] font-medium mb-6">Wybierz kalkulator, aby rozpocząć pracę</p>
+      <h2 className="text-3xl font-black uppercase italic tracking-tighter text-[var(--text)] leading-none mb-2">Kalkulatory</h2>
+      <p className="text-sm text-[var(--text-dim)] font-medium mb-6">Wybierz kalkulator, aby rozpocząć pracę</p>
 
       <div className="flex flex-col gap-4">
         {sorted.map(calc => {
@@ -113,7 +113,7 @@ const HomeScreen = ({ setActiveTab, ads }) => {
               {/* Karta kalkulatora */}
               <button
                 onClick={() => handleCardClick(calc)}
-                className={`w-full text-left bg-[#1E293B] rounded-[2.5rem] border border-[#334155] overflow-hidden transition-all ${
+                className={`w-full text-left bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border)] overflow-hidden transition-all ${
                   calc.active ? 'shadow-xl hover:shadow-2xl group' : 'opacity-60'
                 }`}
               >
@@ -136,7 +136,7 @@ const HomeScreen = ({ setActiveTab, ads }) => {
                       <span className={`mt-3 self-start text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest ${
                         calc.active
                           ? 'bg-[#DC2626] text-white'
-                          : 'bg-[#334155] text-[#94A3B8]'
+                          : 'bg-[var(--bg-input)] text-[var(--text-dim)]'
                       }`}>
                         {calc.active ? 'Otwórz' : 'Wkrótce'}
                       </span>
@@ -144,15 +144,15 @@ const HomeScreen = ({ setActiveTab, ads }) => {
                   </div>
                 ) : (
                   <>
-                    <div className="h-28 bg-[#0F172A] flex items-center justify-center grayscale">
+                    <div className="h-28 bg-[var(--bg)] flex items-center justify-center grayscale">
                       {calc.icon}
                     </div>
                     <div className="p-6 flex items-center justify-between gap-4">
                       <div className="min-w-0">
-                        <h3 className="text-xl font-black uppercase italic tracking-tighter text-[#F8FAFC]">{calc.name}</h3>
-                        <p className="text-xs text-[#94A3B8] font-medium mt-1">{calc.description}</p>
+                        <h3 className="text-xl font-black uppercase italic tracking-tighter text-[var(--text)]">{calc.name}</h3>
+                        <p className="text-xs text-[var(--text-dim)] font-medium mt-1">{calc.description}</p>
                       </div>
-                      <span className="shrink-0 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest bg-[#334155] text-[#94A3B8]">
+                      <span className="shrink-0 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest bg-[var(--bg-input)] text-[var(--text-dim)]">
                         Wkrótce
                       </span>
                     </div>
@@ -164,13 +164,13 @@ const HomeScreen = ({ setActiveTab, ads }) => {
               <button
                 onClick={(e) => toggleFavorite(calc.id, e)}
                 aria-label={isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
-                className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-[#1E293B]/90 backdrop-blur-sm shadow-md transition-transform active:scale-90 hover:scale-110"
+                className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-[var(--bg-card)]/90 backdrop-blur-sm shadow-md transition-transform active:scale-90 hover:scale-110"
               >
                 <Heart
                   size={18}
                   strokeWidth={2}
                   fill={isFav ? '#DC2626' : 'none'}
-                  stroke={isFav ? '#DC2626' : '#94a3b8'}
+                  stroke={isFav ? '#DC2626' : 'var(--text-dim)'}
                 />
               </button>
             </div>
