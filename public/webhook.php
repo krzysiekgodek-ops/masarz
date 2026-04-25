@@ -145,7 +145,7 @@ $plan = $session['metadata']['plan'] ?? '';
 if (!$plan) {
     $amount = (int)($session['amount_total'] ?? 0);
     $plan   = match($amount) {
-        1000 => 'mini',
+        1200 => 'mini',
         2000 => 'midi',
         3000 => 'maxi',
         6000 => 'vip',

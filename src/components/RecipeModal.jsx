@@ -9,7 +9,9 @@ const EMPTY_RECIPE = {
   tech: '', imageUrl: ''
 };
 
-const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave }) => {
+const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave, recipeCount = 0, recipeLimit = Infinity }) => {
+  const isNew = !initialRecipe?.id;
+  const overLimit = isNew && recipeCount >= recipeLimit;
   const [formRecipe, setFormRecipe] = useState(() => {
     if (!initialRecipe) return EMPTY_RECIPE;
     return {
@@ -141,7 +143,20 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave }) => {
           </div>
         </div>
 
-        <button onClick={() => onSave(formRecipe)} className="w-full mt-10 py-6 bg-[#DC2626] text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl hover:bg-red-700 active:scale-95 transition-all">
+        {overLimit && (
+          <p className="mt-10 text-center text-sm font-bold text-red-500">
+            Osiągnięto limit {recipeLimit} receptur dla aktywnego planu. Kup wyższy plan, aby dodać więcej.
+          </p>
+        )}
+        <button
+          onClick={() => !overLimit && onSave(formRecipe)}
+          disabled={overLimit}
+          className={`w-full mt-4 py-6 rounded-3xl font-black uppercase tracking-widest shadow-2xl transition-all ${
+            overLimit
+              ? 'bg-[var(--bg-input)] text-[var(--text-dim)] cursor-not-allowed'
+              : 'bg-[#DC2626] text-white hover:bg-red-700 active:scale-95'
+          }`}
+        >
           <Save className="inline mr-2" /> Zapisz Recepturę
         </button>
       </div>

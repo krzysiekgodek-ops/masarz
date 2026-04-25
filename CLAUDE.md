@@ -73,7 +73,7 @@ There is no React Router. Routing is manual in `src/main.jsx`:
 
 ### Plan systems (two separate, coexisting)
 
-**Firestore plans** (`settings/pricing`): `free` / `mini` / `midi` / `max` — used for recipe limits in the app.
+**Firestore plans** (`settings/pricing`): `free` / `mini` / `midi` / `maxi` / `vip` — used for recipe limits in the app. Legacy value `max` treated as alias for `maxi` (limit: 30).
 
 **Stripe plans** (`src/stripe.js`): `mini` / `midi` / `maxi` / `vip` — used for payment links. After successful payment Stripe redirects to `/success?plan=<id>`, where `SuccessPage` writes the plan ID into `users/{uid}.plan` in Firestore.
 
@@ -93,8 +93,16 @@ VITE_STRIPE_LINK_VIP=
 Meat weights stored as **percentages** in Firestore (normalized from input `val` on save). When calculating: `percentage * totalTarget / 100`. Spices: `perKg * totalTarget`.
 
 ### Plan / trial system
-- 21-day trial grants max-level access (`isTrialActive` computed client-side from `createdAt`)
-- Plans: `free` (2 recipes), `mini`, `midi`, `max` — limits from Firestore `settings/pricing`
+- 21-day trial grants VIP-level access (100 recipes) — `isTrialActive` computed client-side from `createdAt`
+- Plans and recipe limits:
+  - `free` — 2 receptury, każdy kalkulator osobno
+  - `mini` — 10 receptur, 1 wybrany kalkulator (12 zł/rok)
+  - `midi` — 20 receptur, 1 wybrany kalkulator (20 zł/rok)
+  - `maxi` — 30 receptur, 1 wybrany kalkulator (30 zł/rok)
+  - `vip` — 100 receptur łącznie we wszystkich kalkulatorach (60 zł/rok)
+  - `max` — legacy alias dla maxi (limit: 30)
+- Stripe webhook: kwoty → plany: 1200=mini, 2000=midi, 3000=maxi, 6000=vip
+- Firestore rules enforce limits via `users/{uid}.recipeCount` counter field (integer). App must increment this field on recipe create and decrement on delete.
 
 ### Print support
 `Calculator.jsx` has a hidden `print-container` div. Screen-only elements use `no-print` class; activated via `window.print()`.

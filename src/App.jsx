@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, doc, setDoc, getDoc, onSnapshot, query, where, addDoc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getCountFromServer, onSnapshot, query, where, addDoc, serverTimestamp, updateDoc, deleteDoc, increment } from 'firebase/firestore';
 import { auth, db, SUPER_ROOT } from './firebase';
 import useTheme from './hooks/useTheme';
 
@@ -15,7 +15,14 @@ import AdminPanel  from './components/AdminPanel';
 import HomeScreen  from './components/HomeScreen';
 
 const DEFAULT_PLANS = {
-  food: { free: { name: 'Free', limit: 2, price: '0 zł' }, mini: { name: 'Mini', limit: 15, price: '15 zł / rok' }, midi: { name: 'Midi', limit: 30, price: '25 zł / rok' }, max: { name: 'Max', limit: 100, price: '40 zł / rok' } },
+  food: {
+    free:  { name: 'Free',  limit: 2,   price: '0 zł' },
+    mini:  { name: 'Mini',  limit: 10,  price: '12 zł / rok' },
+    midi:  { name: 'Midi',  limit: 20,  price: '20 zł / rok' },
+    maxi:  { name: 'Maxi',  limit: 30,  price: '30 zł / rok' },
+    max:   { name: 'Max',   limit: 30,  price: '30 zł / rok' }, // legacy
+    vip:   { name: 'VIP',   limit: 100, price: '60 zł / rok' },
+  },
   tech: { free: { name: 'Free', limit: 2, price: '0 zł' }, mini: { name: 'Mini', limit: 15, price: '10 zł netto / msc' }, midi: { name: 'Midi', limit: 30, price: '15 zł netto / msc' }, max: { name: 'Max', limit: 9999, price: '25 zł netto / msc' } }
 };
 
@@ -59,8 +66,19 @@ const App = () => {
         let profileData;
         if (userSnap.exists()) {
           profileData = userSnap.data();
+          if (profileData.recipeCount == null) {
+            const countSnap = await getCountFromServer(
+              query(collection(db, 'recipes'), where('ownerId', '==', u.uid))
+            );
+            const count = countSnap.data().count;
+            const countUpdate = { recipeCount: count };
+            if (profileData.plan === 'vip') countUpdate.vipRecipesCount = count;
+            await updateDoc(userRef, countUpdate);
+            profileData = { ...profileData, recipeCount: count };
+            if (profileData.plan === 'vip') profileData.vipRecipesCount = count;
+          }
         } else {
-          profileData = { email: u.email || 'Użytkownik', plan: 'free', tools: ['masarski'], favorites: [], createdAt: new Date().toISOString(), isAdmin: u.email === SUPER_ROOT };
+          profileData = { email: u.email || 'Użytkownik', plan: 'free', tools: ['masarski'], favorites: [], createdAt: new Date().toISOString(), isAdmin: u.email === SUPER_ROOT, recipeCount: 0 };
           await setDoc(userRef, profileData);
         }
         if (u.email === SUPER_ROOT) profileData.isAdmin = true;
@@ -148,8 +166,16 @@ const App = () => {
         updatedAt: serverTimestamp(),
         ownerId: userProfile?.isAdmin ? 'ADMIN' : user.uid
       };
-      if (formRecipe.id) await updateDoc(doc(db, 'recipes', formRecipe.id), payload);
-      else await addDoc(collection(db, 'recipes'), payload);
+      if (formRecipe.id) {
+        await updateDoc(doc(db, 'recipes', formRecipe.id), payload);
+      } else {
+        await addDoc(collection(db, 'recipes'), payload);
+        if (!userProfile?.isAdmin) {
+          const countUpdate = { recipeCount: increment(1) };
+          if (userProfile?.plan === 'vip') countUpdate.vipRecipesCount = increment(1);
+          await updateDoc(doc(db, 'users', user.uid), countUpdate);
+        }
+      }
       setIsRecipeModalOpen(false);
     } catch (e) { alert(e.message); }
   };
@@ -185,6 +211,12 @@ const App = () => {
   const myRecipes      = useMemo(() => Object.values(recipes).filter(r => r.ownerId === user?.uid && !r.blocked), [recipes, user]);
   const favoriteIds    = userProfile?.favorites || [];
   const favoriteRecipes = useMemo(() => adminRecipes.filter(r => favoriteIds.includes(r.id)), [adminRecipes, favoriteIds]);
+
+  const recipeLimit = useMemo(() => {
+    if (userProfile?.isTrialActive) return 100;
+    const plan = userProfile?.plan || 'free';
+    return ((plans?.food ?? DEFAULT_PLANS.food)[plan] ?? DEFAULT_PLANS.food.free).limit;
+  }, [userProfile, plans]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -315,6 +347,8 @@ const App = () => {
           initialRecipe={recipeToEdit}
           onClose={() => setIsRecipeModalOpen(false)}
           onSave={handleSaveRecipe}
+          recipeCount={myRecipes.length}
+          recipeLimit={recipeLimit}
         />
       )}
     </div>

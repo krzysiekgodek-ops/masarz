@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import {
   Edit3, ChefHat, Trash2, Power, Heart, Plus, Lock,
   CheckCircle2, LayoutDashboard, Star
@@ -10,12 +10,12 @@ import { STRIPE_PLANS } from '../stripe';
 
 const DEFAULT_PLANS = {
   food: {
-    free: { name: 'Free',  limit: 2    },
-    mini: { name: 'Mini',  limit: 15   },
-    midi: { name: 'Midi',  limit: 30   },
-    max:  { name: 'Max',   limit: 100  },
-    maxi: { name: 'Maxi',  limit: 100  },
-    vip:  { name: 'VIP',   limit: 9999 },
+    free: { name: 'Free',  limit: 2   },
+    mini: { name: 'Mini',  limit: 10  },
+    midi: { name: 'Midi',  limit: 20  },
+    maxi: { name: 'Maxi',  limit: 30  },
+    max:  { name: 'Max',   limit: 30  }, // legacy alias dla maxi
+    vip:  { name: 'VIP',   limit: 100 },
   },
 };
 
@@ -33,7 +33,7 @@ const ClientPanel = ({
   setActiveTab,
 }) => {
 
-  const effectivePlan = userProfile?.isTrialActive ? 'max' : (userProfile?.plan || 'free');
+  const effectivePlan = userProfile?.isTrialActive ? 'vip' : (userProfile?.plan || 'free');
   const planSource    = plans?.food ?? DEFAULT_PLANS.food;
   const planData      = planSource[effectivePlan] ?? planSource.free;
   const recipeLimit   = planData.limit;
@@ -108,7 +108,12 @@ const ClientPanel = ({
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
-                  if (window.confirm('Usunąć recepturę?')) await deleteDoc(doc(db, 'recipes', recipe.id));
+                  if (window.confirm('Usunąć recepturę?')) {
+                    await deleteDoc(doc(db, 'recipes', recipe.id));
+                    const countUpdate = { recipeCount: increment(-1) };
+                    if (userProfile?.plan === 'vip') countUpdate.vipRecipesCount = increment(-1);
+                    await updateDoc(doc(db, 'users', user.uid), countUpdate);
+                  }
                 }}
                 className="p-2 text-[var(--text-dim)] hover:text-red-500 rounded-xl transition-all"
               >
@@ -132,7 +137,7 @@ const ClientPanel = ({
           <div>
             <h2 className="text-2xl font-black uppercase italic tracking-tighter text-[var(--text)]">Moje receptury</h2>
             <p className="text-xs text-[var(--text-dim)] mt-1 font-medium">
-              {myRecipes.length} / {recipeLimit === 9999 ? '∞' : recipeLimit} receptur
+              {myRecipes.length} / {recipeLimit} receptur
             </p>
           </div>
           {canAdd ? (
@@ -237,7 +242,7 @@ const ClientPanel = ({
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-[var(--text-dim)]">Wykorzystane receptury</span>
             <span className="font-black text-[var(--text)] text-sm">
-              {myRecipes.length} / {recipeLimit === 9999 ? '∞' : recipeLimit}
+              {myRecipes.length} / {recipeLimit}
             </span>
           </div>
           <div className="bg-[var(--bg)] rounded-full h-2 overflow-hidden">
@@ -272,7 +277,7 @@ const ClientPanel = ({
                     <div>
                       <p className="font-black text-sm uppercase tracking-wide">{plan.label}</p>
                       <p className={`text-[10px] font-bold ${isActive ? 'text-red-100' : 'text-[var(--text-dim)]'}`}>
-                        {plan.limit >= 9999 ? '∞ receptur' : `do ${plan.limit} receptur`}
+                        {`do ${plan.limit} receptur`}{plan.scope ? ` · ${plan.scope}` : ''}
                       </p>
                     </div>
                   </div>
