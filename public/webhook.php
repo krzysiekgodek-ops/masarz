@@ -19,12 +19,75 @@ function respond(int $code, array $body): void {
     exit;
 }
 
+function base64url(string $data): string {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function getFirebaseToken(): string {
+    $now = time();
+
+    $header  = base64url(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+    $claims  = base64url(json_encode([
+        'iss'   => FIREBASE_CLIENT_EMAIL,
+        'sub'   => FIREBASE_CLIENT_EMAIL,
+        'aud'   => 'https://oauth2.googleapis.com/token',
+        'iat'   => $now,
+        'exp'   => $now + 3600,
+        'scope' => 'https://www.googleapis.com/auth/datastore',
+    ]));
+
+    $signingInput = "$header.$claims";
+
+    // Convert \n escape sequences in the PEM key to actual newlines
+    $privateKey = str_replace('\n', "\n", FIREBASE_PRIVATE_KEY);
+    $pem = openssl_pkey_get_private($privateKey);
+    if (!$pem) {
+        throw new RuntimeException('Failed to load private key: ' . openssl_error_string());
+    }
+
+    $signature = '';
+    if (!openssl_sign($signingInput, $signature, $pem, OPENSSL_ALGO_SHA256)) {
+        throw new RuntimeException('Failed to sign JWT: ' . openssl_error_string());
+    }
+
+    $jwt = "$signingInput." . base64url($signature);
+
+    // Exchange JWT for access token
+    $ch = curl_init('https://oauth2.googleapis.com/token');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion'  => $jwt,
+        ]),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
+    ]);
+
+    $response  = curl_exec($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlError) {
+        throw new RuntimeException("Token exchange curl error: $curlError");
+    }
+
+    $data = json_decode($response, true);
+
+    if ($httpCode !== 200 || empty($data['access_token'])) {
+        throw new RuntimeException("Token exchange failed ($httpCode): $response");
+    }
+
+    return $data['access_token'];
+}
+
 // Only accept POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, ['error' => 'Method not allowed']);
 }
 
-$rawBody  = file_get_contents('php://input');
+$rawBody   = file_get_contents('php://input');
 $sigHeader = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
 
 // Verify Stripe signature
@@ -81,7 +144,7 @@ $plan = $session['metadata']['plan'] ?? '';
 
 if (!$plan) {
     $amount = (int)($session['amount_total'] ?? 0);
-    $plan = match($amount) {
+    $plan   = match($amount) {
         1000 => 'mini',
         2000 => 'midi',
         3000 => 'maxi',
@@ -96,6 +159,14 @@ if (!$plan) {
 }
 
 writeLog("PLAN: uid=$uid plan=$plan");
+
+// Obtain Firebase access token via Service Account JWT
+try {
+    $accessToken = getFirebaseToken();
+} catch (RuntimeException $e) {
+    writeLog('ERROR: ' . $e->getMessage());
+    respond(400, ['error' => 'Auth token error']);
+}
 
 // planExpiry = now + 365 days in milliseconds
 $planExpiry = (time() + 365 * 24 * 3600) * 1000;
@@ -120,8 +191,7 @@ $updateMask = implode('&', array_map(
 
 $url = 'https://firestore.googleapis.com/v1/projects/' . FIREBASE_PROJECT_ID
      . '/databases/(default)/documents/users/' . urlencode($uid)
-     . '?' . $updateMask
-     . '&key=' . FIREBASE_API_KEY;
+     . '?' . $updateMask;
 
 $payload = json_encode(['fields' => $fields]);
 
@@ -130,12 +200,15 @@ curl_setopt_array($ch, [
     CURLOPT_CUSTOMREQUEST  => 'PATCH',
     CURLOPT_POSTFIELDS     => $payload,
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+    CURLOPT_HTTPHEADER     => [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $accessToken,
+    ],
 ]);
 
-$response   = curl_exec($ch);
-$httpCode   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlError  = curl_error($ch);
+$response  = curl_exec($ch);
+$httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlError = curl_error($ch);
 curl_close($ch);
 
 if ($curlError) {
