@@ -39,5 +39,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           source: "dist/*"
-          target: "/usr/home/pluszek2026/domains/masarz.ebra.pl/public_html/"
+          target: "domains/masarz.ebra.pl/public_html/"
           strip_components: 1
