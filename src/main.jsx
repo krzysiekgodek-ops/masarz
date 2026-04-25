@@ -35,11 +35,17 @@ function PWAInstallPrompt() {
   const { offlineReady, needRefresh, updateServiceWorker, registration } = usePWAPrompt()
   const [showPrompt, setShowPrompt] = React.useState(false)
 
+  const dismiss = () => {
+    localStorage.setItem('pwa-dismissed', Date.now().toString())
+    setShowPrompt(false)
+  }
+
   React.useEffect(() => {
-    // Sprawdź czy można pokazać prompt (beforeinstallprompt)
+    const dismissed = localStorage.getItem('pwa-dismissed')
+    if (dismissed && Date.now() - Number(dismissed) < 7 * 24 * 60 * 60 * 1000) return
+
     const handleBeforeInstall = (e) => {
       e.preventDefault()
-      // Zachowujemy event, żeby użyć go później do instalacji
       window.deferredPrompt = e
       setShowPrompt(true)
     }
@@ -81,12 +87,20 @@ function PWAInstallPrompt() {
             <p className="text-sm text-gray-500">Dodaj do ekranu głównego</p>
           </div>
         </div>
-        <button
-          onClick={handleInstall}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-        >
-          Instaluj
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={dismiss}
+            className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            Nie teraz
+          </button>
+          <button
+            onClick={handleInstall}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+          >
+            Instaluj
+          </button>
+        </div>
       </div>
     </div>
   )
