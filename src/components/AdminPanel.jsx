@@ -4,9 +4,19 @@ import { signOut } from 'firebase/auth';
 import {
   Plus, Trash2, Megaphone, Power, ChevronDown, ChevronRight, Eye, Lock, Unlock, X,
   Users, CreditCard, BookOpen, UserPlus, Download, FileText, Upload, ExternalLink,
-  Edit2, Archive, RotateCcw, Image as ImageIcon, Calendar,
+  Edit2, Archive, RotateCcw, Image as ImageIcon, Calendar, TrendingUp, Save,
 } from 'lucide-react';
 import { auth, db, SUPER_ROOT, MYDEVIL_URL, MYDEVIL_PDF_URL } from '../firebase';
+
+const parseTs = (v) => {
+  if (!v) return null;
+  if (v.seconds) return v.seconds * 1000;
+  if (v instanceof Date) return v.getTime();
+  const n = Number(v);
+  if (!isNaN(n) && n > 0) return n;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d.getTime();
+};
 
 const formatDate = (ts) => {
   if (!ts) return '';
@@ -24,6 +34,15 @@ const tsToInputDate = (ts) => {
 
 const inputDateToDate = (str) => (str ? new Date(str) : null);
 
+const CALC_OPTIONS = [
+  { value: 'masarz',    label: 'Masarski Master' },
+  { value: 'piekarz',   label: 'Piekarski Mistrz' },
+  { value: 'browarnik', label: 'Browarnik' },
+  { value: 'nalewki',   label: 'Nalewki' },
+];
+
+const PLAN_OPTIONS = ['free', 'mini', 'midi', 'maxi', 'vip'];
+
 const StatCard = ({ icon: Icon, label, value, accent }) => (
   <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-6 flex flex-col gap-3">
     <div className="flex items-center gap-2">
@@ -34,13 +53,14 @@ const StatCard = ({ icon: Icon, label, value, accent }) => (
   </div>
 );
 
-const EMPTY_AD = { title: '', imageUrl: '', targetUrl: '', startDate: '', endDate: '', active: true };
+const EMPTY_AD = { title: '', imageUrl: '', targetUrl: '', startDate: '', endDate: '', active: true, calculators: [] };
 
 const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPlan, toggleAdmin, deleteUserAccount, onAddRecipe }) => {
   const [adminSubTab, setAdminSubTab]       = useState('dashboard');
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [userRecipesMap, setUserRecipesMap] = useState({});
   const [previewRecipe, setPreviewRecipe]   = useState(null);
+  const [userCalcState, setUserCalcState]   = useState({});
 
   // Ads management state
   const [adSubTab, setAdSubTab]     = useState('active');
@@ -64,16 +84,21 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
     activeSubscriptions: allUsers.filter(u => u.plan && u.plan !== 'free').length,
     totalRecipes: allRecipes.length,
     newUsersWeek: allUsers.filter(u => {
-      if (!u.createdAt) return false;
-      const ts = u.createdAt.seconds ? u.createdAt.seconds * 1000 : Number(u.createdAt);
-      return ts >= sevenDaysAgo;
+      const ts = parseTs(u.createdAt);
+      return ts !== null && ts >= sevenDaysAgo;
+    }).length,
+    newSubscriptionsWeek: allUsers.filter(u => {
+      if (!u.plan || u.plan === 'free') return false;
+      if (!u.planExpiry) return false;
+      const ts = parseTs(u.createdAt);
+      return ts !== null && ts >= sevenDaysAgo;
     }).length,
   }), [allUsers, allRecipes]);
 
   const recentUsers = useMemo(() =>
     [...allUsers]
       .filter(u => u.createdAt)
-      .sort((a, b) => (b.createdAt.seconds ?? 0) - (a.createdAt.seconds ?? 0))
+      .sort((a, b) => (parseTs(b.createdAt) ?? 0) - (parseTs(a.createdAt) ?? 0))
       .slice(0, 10),
     [allUsers]
   );
@@ -98,6 +123,16 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
   }), [ads, now]);
 
   // ── Ad form helpers ──────────────────────────────────────────────────────
+  const toggleAdCalc = (val) => {
+    setAdForm(f => {
+      const calcs = f.calculators || [];
+      return {
+        ...f,
+        calculators: calcs.includes(val) ? calcs.filter(c => c !== val) : [...calcs, val],
+      };
+    });
+  };
+
   const openNewAdForm = () => {
     setAdForm(EMPTY_AD);
     setEditAdId(null);
@@ -106,12 +141,13 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
 
   const openEditAdForm = (ad) => {
     setAdForm({
-      title:     ad.title || ad.content || '',
-      imageUrl:  ad.imageUrl || '',
-      targetUrl: ad.targetUrl || '',
-      startDate: tsToInputDate(ad.startDate),
-      endDate:   tsToInputDate(ad.endDate),
-      active:    ad.active ?? true,
+      title:       ad.title || ad.content || '',
+      imageUrl:    ad.imageUrl || '',
+      targetUrl:   ad.targetUrl || '',
+      startDate:   tsToInputDate(ad.startDate),
+      endDate:     tsToInputDate(ad.endDate),
+      active:      ad.active ?? true,
+      calculators: ad.calculators || [],
     });
     setEditAdId(ad.id);
     setShowAdForm(true);
@@ -126,13 +162,14 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
   const handleSaveAd = async () => {
     if (!adForm.title.trim()) return alert('Podaj tytuł reklamy.');
     const payload = {
-      title:     adForm.title.trim(),
-      imageUrl:  adForm.imageUrl,
-      targetUrl: adForm.targetUrl,
-      startDate: inputDateToDate(adForm.startDate),
-      endDate:   inputDateToDate(adForm.endDate),
-      active:    adForm.active,
-      archived:  false,
+      title:       adForm.title.trim(),
+      imageUrl:    adForm.imageUrl,
+      targetUrl:   adForm.targetUrl,
+      startDate:   inputDateToDate(adForm.startDate),
+      endDate:     inputDateToDate(adForm.endDate),
+      active:      adForm.active,
+      archived:    false,
+      calculators: adForm.calculators || [],
     };
     if (editAdId) {
       await updateDoc(doc(db, 'ads', editAdId), payload);
@@ -181,6 +218,12 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
     const next = expandedUserId === userId ? null : userId;
     setExpandedUserId(next);
     if (next) loadUserRecipes(next);
+  };
+
+  const handleSaveCalculatorPlan = async (userId, calc, plan) => {
+    await updateDoc(doc(db, 'users', userId), {
+      [`calculatorPlans.${calc}.plan`]: plan,
+    });
   };
 
   const handleBlockRecipe = async (recipeId, block) => {
@@ -233,11 +276,12 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
       {/* ── DASHBOARD ───────────────────────────────────────────────────────── */}
       {adminSubTab === 'dashboard' && (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={Users}      label="Wszyscy użytkownicy"   value={stats.totalUsers} />
-            <StatCard icon={CreditCard} label="Aktywne subskrypcje"   value={stats.activeSubscriptions} accent />
-            <StatCard icon={BookOpen}   label="Receptury w systemie"  value={stats.totalRecipes} />
-            <StatCard icon={UserPlus}   label="Nowi (ostatnie 7 dni)" value={stats.newUsersWeek} />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <StatCard icon={Users}       label="Wszyscy użytkownicy"    value={stats.totalUsers} />
+            <StatCard icon={CreditCard}  label="Aktywne subskrypcje"    value={stats.activeSubscriptions} accent />
+            <StatCard icon={BookOpen}    label="Receptury w systemie"   value={stats.totalRecipes} />
+            <StatCard icon={UserPlus}    label="Nowi (ostatnie 7 dni)"  value={stats.newUsersWeek} />
+            <StatCard icon={TrendingUp}  label="Nowe subskrypcje (7 dni)" value={stats.newSubscriptionsWeek} accent />
           </div>
 
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-6">
@@ -324,87 +368,150 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
       {adminSubTab === 'users' && (
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-[3rem] p-6 md:p-10 shadow-xl">
           <div className="divide-y divide-[var(--border)]">
-            {allUsers.map(u => (
-              <React.Fragment key={u.id}>
-                <div className="flex items-center justify-between py-5 cursor-pointer hover:bg-[var(--bg)] px-2 -mx-2 rounded-2xl transition-colors"
-                  onClick={() => handleToggleUser(u.id)}>
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    {expandedUserId === u.id
-                      ? <ChevronDown size={14} className="text-[var(--text-dim)] shrink-0" />
-                      : <ChevronRight size={14} className="text-[var(--text-dim)] shrink-0" />}
-                    <span className="font-bold text-[var(--text)] text-sm truncate">{u.email}</span>
-                    {u.isAdmin && <span className="text-[8px] font-black bg-red-900/30 text-red-400 px-2 py-0.5 rounded-full uppercase shrink-0">Admin</span>}
+            {allUsers.map(u => {
+              const calcState = userCalcState[u.id] || { calc: 'masarz', plan: 'free' };
+              const calcPlans = u.calculatorPlans || {};
+              return (
+                <React.Fragment key={u.id}>
+                  <div className="flex items-center justify-between py-5 cursor-pointer hover:bg-[var(--bg)] px-2 -mx-2 rounded-2xl transition-colors"
+                    onClick={() => handleToggleUser(u.id)}>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {expandedUserId === u.id
+                        ? <ChevronDown size={14} className="text-[var(--text-dim)] shrink-0" />
+                        : <ChevronRight size={14} className="text-[var(--text-dim)] shrink-0" />}
+                      <span className="font-bold text-[var(--text)] text-sm truncate">{u.email}</span>
+                      {u.isAdmin && <span className="text-[8px] font-black bg-red-900/30 text-red-400 px-2 py-0.5 rounded-full uppercase shrink-0">Admin</span>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-4" onClick={e => e.stopPropagation()}>
+                      <select value={u.plan || 'free'} onChange={e => updatePlayerPlan(u.id, e.target.value)}
+                        className="bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] p-2 rounded-xl text-[10px] font-black uppercase outline-none">
+                        <option value="free">Free</option>
+                        <option value="mini">Mini</option>
+                        <option value="midi">Midi</option>
+                        <option value="maxi">Maxi</option>
+                        <option value="vip">VIP</option>
+                        {u.plan === 'max' && <option value="max">Max (legacy)</option>}
+                      </select>
+                      {u.email !== SUPER_ROOT ? (
+                        <>
+                          <button onClick={() => toggleAdmin(u.id, u.isAdmin)}
+                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase ${u.isAdmin ? 'bg-red-900/30 text-red-400' : 'bg-[var(--bg-input)] text-[var(--text-dim)]'}`}>
+                            {u.isAdmin ? 'Odbierz' : 'Admin'}
+                          </button>
+                          <button onClick={() => deleteUserAccount(u.id, u.email)}
+                            className="p-2 bg-red-900/20 text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-colors" title="Usuń użytkownika">
+                            <Trash2 size={15} />
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-[10px] font-black text-red-500 uppercase px-3">Właściciel</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-4" onClick={e => e.stopPropagation()}>
-                    <select value={u.plan || 'free'} onChange={e => updatePlayerPlan(u.id, e.target.value)}
-                      className="bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] p-2 rounded-xl text-[10px] font-black uppercase outline-none">
-                      <option value="free">Free</option>
-                      <option value="mini">Mini</option>
-                      <option value="midi">Midi</option>
-                      <option value="max">Max</option>
-                    </select>
-                    {u.email !== SUPER_ROOT ? (
-                      <>
-                        <button onClick={() => toggleAdmin(u.id, u.isAdmin)}
-                          className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase ${u.isAdmin ? 'bg-red-900/30 text-red-400' : 'bg-[var(--bg-input)] text-[var(--text-dim)]'}`}>
-                          {u.isAdmin ? 'Odbierz' : 'Admin'}
-                        </button>
-                        <button onClick={() => deleteUserAccount(u.id, u.email)}
-                          className="p-2 bg-red-900/20 text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-colors" title="Usuń użytkownika">
-                          <Trash2 size={15} />
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-[10px] font-black text-red-500 uppercase px-3">Właściciel</span>
-                    )}
-                  </div>
-                </div>
 
-                {expandedUserId === u.id && (
-                  <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-4 mt-1 mb-3 mx-1">
-                    <p className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest mb-3">Receptury użytkownika</p>
-                    {!userRecipesMap[u.id] ? (
-                      <p className="text-xs text-[var(--text-dim)] py-4 text-center">Ładowanie…</p>
-                    ) : userRecipesMap[u.id].length === 0 ? (
-                      <p className="text-xs text-[var(--text-dim)] py-4 text-center font-bold uppercase">Brak receptur</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {userRecipesMap[u.id].map(r => (
-                          <div key={r.id} className={`flex items-center justify-between p-3 rounded-xl border ${r.blocked ? 'bg-red-900/20 border-red-900/30' : 'bg-[var(--bg-card)] border-[var(--border)]'}`}>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-bold text-sm text-[var(--text)] truncate">{r.name}</p>
-                                {r.blocked && <span className="text-[8px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full uppercase shrink-0">Zablokowana</span>}
-                              </div>
-                              <p className="text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-wider mt-0.5">
-                                {r.category}{formatDate(r.updatedAt) ? ` · ${formatDate(r.updatedAt)}` : ''}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 ml-3 shrink-0">
-                              <button onClick={() => setPreviewRecipe(r)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-input)] text-[var(--text-dim)] rounded-xl text-[10px] font-black uppercase hover:opacity-70 transition-all">
-                                <Eye size={11} /> Podgląd
-                              </button>
-                              {r.blocked ? (
-                                <button onClick={() => handleBlockRecipe(r.id, false)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/30 text-green-400 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 hover:text-white transition-all">
-                                  <Unlock size={11} /> Odblokuj
-                                </button>
-                              ) : (
-                                <button onClick={() => handleBlockRecipe(r.id, true)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-900/20 text-red-400 rounded-xl text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all">
-                                  <Lock size={11} /> Zablokuj
-                                </button>
-                              )}
-                            </div>
+                  {expandedUserId === u.id && (
+                    <>
+                      {/* Kalkulatory */}
+                      <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-4 mt-1 mb-2 mx-1">
+                        <p className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest mb-3">Kalkulatory</p>
+
+                        {/* Aktualny stan */}
+                        {CALC_OPTIONS.some(c => calcPlans[c.value]?.plan) && (
+                          <div className="space-y-1.5 mb-4">
+                            {CALC_OPTIONS.map(c => {
+                              const cp = calcPlans[c.value];
+                              if (!cp?.plan) return null;
+                              return (
+                                <div key={c.value} className="flex items-center justify-between text-[10px] px-3 py-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl">
+                                  <span className="text-[var(--text-dim)] font-bold">{c.label}</span>
+                                  <div className="flex items-center gap-3">
+                                    <span className={`font-black uppercase px-2 py-0.5 rounded-full text-[9px] ${cp.plan !== 'free' ? 'bg-red-900/30 text-red-400' : 'bg-[var(--bg-input)] text-[var(--text-dim)]'}`}>
+                                      {cp.plan}
+                                    </span>
+                                    {cp.expiry && (
+                                      <span className="text-[var(--text-dim)]">
+                                        do {new Date(Number(cp.expiry)).toLocaleDateString('pl-PL')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        ))}
+                        )}
+
+                        {/* Formularz aktualizacji */}
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={calcState.calc}
+                            onChange={e => setUserCalcState(prev => ({ ...prev, [u.id]: { ...calcState, calc: e.target.value } }))}
+                            className="flex-1 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text)] p-2 rounded-xl text-[10px] font-black uppercase outline-none"
+                          >
+                            {CALC_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                          </select>
+                          <select
+                            value={calcState.plan}
+                            onChange={e => setUserCalcState(prev => ({ ...prev, [u.id]: { ...calcState, plan: e.target.value } }))}
+                            className="flex-1 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text)] p-2 rounded-xl text-[10px] font-black uppercase outline-none"
+                          >
+                            {PLAN_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                          <button
+                            onClick={() => handleSaveCalculatorPlan(u.id, calcState.calc, calcState.plan)}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-[#DC2626] text-white rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-all shrink-0"
+                          >
+                            <Save size={11} /> Zapisz
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )}
-              </React.Fragment>
-            ))}
+
+                      {/* Receptury */}
+                      <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-4 mb-3 mx-1">
+                        <p className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest mb-3">Receptury użytkownika</p>
+                        {!userRecipesMap[u.id] ? (
+                          <p className="text-xs text-[var(--text-dim)] py-4 text-center">Ładowanie…</p>
+                        ) : userRecipesMap[u.id].length === 0 ? (
+                          <p className="text-xs text-[var(--text-dim)] py-4 text-center font-bold uppercase">Brak receptur</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {userRecipesMap[u.id].map(r => (
+                              <div key={r.id} className={`flex items-center justify-between p-3 rounded-xl border ${r.blocked ? 'bg-red-900/20 border-red-900/30' : 'bg-[var(--bg-card)] border-[var(--border)]'}`}>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-bold text-sm text-[var(--text)] truncate">{r.name}</p>
+                                    {r.blocked && <span className="text-[8px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full uppercase shrink-0">Zablokowana</span>}
+                                  </div>
+                                  <p className="text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-wider mt-0.5">
+                                    {r.category}{formatDate(r.updatedAt) ? ` · ${formatDate(r.updatedAt)}` : ''}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 ml-3 shrink-0">
+                                  <button onClick={() => setPreviewRecipe(r)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-input)] text-[var(--text-dim)] rounded-xl text-[10px] font-black uppercase hover:opacity-70 transition-all">
+                                    <Eye size={11} /> Podgląd
+                                  </button>
+                                  {r.blocked ? (
+                                    <button onClick={() => handleBlockRecipe(r.id, false)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/30 text-green-400 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 hover:text-white transition-all">
+                                      <Unlock size={11} /> Odblokuj
+                                    </button>
+                                  ) : (
+                                    <button onClick={() => handleBlockRecipe(r.id, true)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-900/20 text-red-400 rounded-xl text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all">
+                                      <Lock size={11} /> Zablokuj
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
       )}
@@ -424,18 +531,20 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
               </div>
 
               <div className="space-y-4">
+                {/* Tytuł */}
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-1">Tytuł reklamy *</label>
                   <input className={inputCls} placeholder="Wpisz tytuł..." value={adForm.title}
                     onChange={e => setAdForm(f => ({ ...f, title: e.target.value }))} />
                 </div>
 
+                {/* Zdjęcie banera */}
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-1">Zdjęcie banera</label>
                   <div className="flex gap-2">
                     <input className={inputCls} placeholder="https://... lub wgraj plik →" value={adForm.imageUrl}
                       onChange={e => setAdForm(f => ({ ...f, imageUrl: e.target.value }))} />
-                    <label className={`flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-black uppercase cursor-pointer shrink-0 transition-all bg-[var(--bg-input)] text-[var(--text-dim)] hover:opacity-70`}>
+                    <label className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-black uppercase cursor-pointer shrink-0 transition-all bg-[var(--bg-input)] text-[var(--text-dim)] hover:opacity-70">
                       <ImageIcon size={13} />
                       {uploadingImg ? 'Wgrywam…' : 'Wgraj'}
                       <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleUploadImage} disabled={uploadingImg} />
@@ -446,12 +555,13 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
                   )}
                 </div>
 
+                {/* URL docelowy lub PDF */}
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-1">Link docelowy lub PDF</label>
                   <div className="flex gap-2">
                     <input className={inputCls} placeholder="https://... lub wgraj PDF →" value={adForm.targetUrl}
                       onChange={e => setAdForm(f => ({ ...f, targetUrl: e.target.value }))} />
-                    <label className={`flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-black uppercase cursor-pointer shrink-0 transition-all bg-[var(--bg-input)] text-[var(--text-dim)] hover:opacity-70`}>
+                    <label className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-black uppercase cursor-pointer shrink-0 transition-all bg-[var(--bg-input)] text-[var(--text-dim)] hover:opacity-70">
                       <FileText size={13} />
                       {uploadingPdf ? 'Wgrywam…' : 'PDF'}
                       <input type="file" accept="application/pdf" className="hidden" onChange={handleUploadPdf} disabled={uploadingPdf} />
@@ -465,6 +575,7 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
                   )}
                 </div>
 
+                {/* Daty */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-1">Data rozpoczęcia</label>
@@ -478,6 +589,28 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
                   </div>
                 </div>
 
+                {/* Kalkulatory */}
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-2">Kalkulatory</label>
+                  <div className="flex flex-wrap gap-5">
+                    {CALC_OPTIONS.map(c => (
+                      <label key={c.value} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={(adForm.calculators || []).includes(c.value)}
+                          onChange={() => toggleAdCalc(c.value)}
+                          className="w-4 h-4 accent-[#DC2626]"
+                        />
+                        <span className="text-sm font-bold text-[var(--text)]">{c.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-[var(--text-dim)] mt-1.5">
+                    Brak zaznaczenia = wyświetla się we wszystkich kalkulatorach
+                  </p>
+                </div>
+
+                {/* Status + zapis */}
                 <div className="flex items-center justify-between pt-2">
                   <button
                     onClick={() => setAdForm(f => ({ ...f, active: !f.active }))}
@@ -528,11 +661,12 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
           ) : (
             <div className="space-y-3">
               {(adSubTab === 'active' ? activeAdsList : archiveAdsList).map(ad => {
-                const endMs  = ad.endDate?.seconds  ? ad.endDate.seconds * 1000  : null;
+                const endMs   = ad.endDate?.seconds  ? ad.endDate.seconds * 1000  : null;
                 const startMs = ad.startDate?.seconds ? ad.startDate.seconds * 1000 : null;
                 const isExpired  = endMs && endMs < now;
                 const isUpcoming = startMs && startMs > now;
                 const isPdf = ad.targetUrl?.toLowerCase().endsWith('.pdf');
+                const adCalcs = ad.calculators || [];
 
                 return (
                   <div key={ad.id} className={`bg-[var(--bg-card)] border rounded-3xl p-5 transition-all ${ad.active && !isExpired ? 'border-[var(--border)]' : 'border-[var(--border)] opacity-60'}`}>
@@ -562,7 +696,7 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 text-[10px] text-[var(--text-dim)] mb-2">
+                        <div className="flex items-center gap-3 text-[10px] text-[var(--text-dim)] mb-1">
                           {(ad.startDate || ad.endDate) && (
                             <span className="flex items-center gap-1">
                               <Calendar size={9} />
@@ -576,6 +710,19 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
                             </span>
                           )}
                         </div>
+
+                        {adCalcs.length > 0 && (
+                          <div className="flex gap-1 flex-wrap mt-1">
+                            {adCalcs.map(c => {
+                              const label = CALC_OPTIONS.find(o => o.value === c)?.label || c;
+                              return (
+                                <span key={c} className="text-[8px] font-black bg-[var(--bg-input)] text-[var(--text-dim)] px-2 py-0.5 rounded-full uppercase">
+                                  {label}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">

@@ -8,7 +8,7 @@ const tsToMs = (ts) => {
   return null;
 };
 
-const AdBanner = ({ ads }) => {
+const AdBanner = ({ ads, calculatorId }) => {
   const [index, setIndex]     = useState(0);
   const [visible, setVisible] = useState(true);
   const [dismissed, setDismissed] = useState(new Set());
@@ -23,9 +23,10 @@ const AdBanner = ({ ads }) => {
       const end   = tsToMs(ad.endDate);
       if (start && now < start) return false;
       if (end   && now > end)   return false;
+      if (calculatorId && ad.calculators?.length > 0 && !ad.calculators.includes(calculatorId)) return false;
       return true;
     });
-  }, [ads, dismissed, now]);
+  }, [ads, dismissed, now, calculatorId]);
 
   useEffect(() => {
     if (index >= activeAds.length && activeAds.length > 0) setIndex(0);

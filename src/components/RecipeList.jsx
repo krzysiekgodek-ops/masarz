@@ -27,7 +27,7 @@ const RecipeList = ({
   return (
     <div>
       {/* Banery reklamowe */}
-      <AdBanner ads={ads} />
+      <AdBanner ads={ads} calculatorId="masarz" />
 
       {/* Filtry kategorii */}
       <div className="flex gap-2 px-4 pt-4 pb-2 overflow-x-auto scrollbar-hide">
