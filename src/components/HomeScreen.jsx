@@ -20,6 +20,7 @@ const CALCULATORS = [
     name: 'Piekarski Mistrz',
     description: 'Domowe receptury pieczywa',
     active: false,
+    url: 'https://www.piekarz.ebra.pl',
     hasBanner: true,
     banner: '/banner_piekarz.png',
     bannerTitle: 'Piekarski Mistrz',
@@ -78,6 +79,8 @@ const HomeScreen = ({ setActiveTab, ads }) => {
   const handleCardClick = (calc) => {
     if (calc.active) {
       setActiveTab('recipes');
+    } else if (calc.url) {
+      window.open(calc.url, '_self');
     } else {
       setToast(true);
       setTimeout(() => setToast(false), 2500);
@@ -133,12 +136,13 @@ const HomeScreen = ({ setActiveTab, ads }) => {
                         {calc.bannerTitle}
                       </p>
                       <p className="text-sm text-slate-300 font-medium">{calc.bannerSub}</p>
-                      <span className={`mt-3 self-start text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest ${
-                        calc.active
-                          ? 'bg-[#DC2626] text-white'
-                          : 'bg-[var(--bg-input)] text-[var(--text-dim)]'
-                      }`}>
-                        {calc.active ? 'Otwórz' : 'Wkrótce'}
+                      <span
+                        className={`mt-3 self-start text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest ${
+                          calc.active || calc.url ? 'text-white' : 'bg-[var(--bg-input)] text-[var(--text-dim)]'
+                        }`}
+                        style={calc.active || calc.url ? { backgroundColor: calc.active ? '#DC2626' : '#c8860a' } : {}}
+                      >
+                        {calc.active || calc.url ? 'Otwórz' : 'Wkrótce'}
                       </span>
                     </div>
                   </div>
