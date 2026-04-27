@@ -20,11 +20,13 @@ const CALCULATORS = [
     name: 'Piekarski Mistrz',
     description: 'Domowe receptury pieczywa',
     active: false,
-    url: 'https://piekarz.ebra.pl/#receptury',
+    url: 'https://www.piekarz.ebra.pl/#receptury',
     hasBanner: true,
     banner: '/banner_piekarz.png',
     bannerTitle: 'Piekarski Mistrz',
     bannerSub: 'Otwieramy wkrótce!',
+    logo: '/logo_piekarz.png',
+    noGrayscale: true,
   },
   {
     id: 'nalewki',
@@ -117,7 +119,7 @@ const HomeScreen = ({ setActiveTab, ads }) => {
               <button
                 onClick={() => handleCardClick(calc)}
                 className={`w-full text-left bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border)] overflow-hidden transition-all ${
-                  calc.active ? 'shadow-xl hover:shadow-2xl group' : 'opacity-60'
+                  calc.active ? 'shadow-xl hover:shadow-2xl group' : calc.noGrayscale ? 'shadow-xl hover:shadow-2xl' : 'opacity-60'
                 }`}
               >
                 {calc.hasBanner ? (
@@ -125,11 +127,16 @@ const HomeScreen = ({ setActiveTab, ads }) => {
                     <img
                       src={calc.banner}
                       alt={calc.name}
-                      className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ${calc.active ? 'group-hover:scale-105' : 'grayscale'}`}
+                      className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ${calc.active ? 'group-hover:scale-105' : calc.noGrayscale ? '' : 'grayscale'}`}
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
-                    {calc.active && (
-                      <img src="/logo.svg" alt="Logo" className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-12 drop-shadow z-10" />
+                    {(calc.active || calc.logo) && (
+                      <img
+                        src={calc.logo || '/logo.svg'}
+                        alt="Logo"
+                        className="absolute top-4 left-1/2 -translate-x-1/2 drop-shadow z-10"
+                        style={{ width: calc.logo ? 60 : 48, height: calc.logo ? 60 : 48, objectFit: 'contain' }}
+                      />
                     )}
                     <div className="absolute inset-0 flex flex-col justify-center px-7 gap-1">
                       <p className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none drop-shadow">

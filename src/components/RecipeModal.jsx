@@ -6,8 +6,14 @@ const EMPTY_RECIPE = {
   name: '', category: '',
   meats: [{ name: '', val: 0, grinding: '' }],
   spices: [{ name: '', perKg: 0, unit: 'g' }],
-  tech: '', imageUrl: ''
+  tech: '', imageUrl: '', videoUrl: ''
 };
+
+const POPULAR_SPICES = [
+  'Sól', 'Peklosól', 'Pieprz mielony', 'Pieprz w ziarnach',
+  'Ziele angielskie', 'Papryka ostra', 'Cukier', 'Woda',
+  'Czosnek świeży', 'Czosnek suszony', 'Majeranek', 'Kolendra',
+];
 
 const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave, recipeCount = 0, recipeLimit = Infinity }) => {
   const isNew = !initialRecipe?.id;
@@ -85,6 +91,10 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave, recipeC
               <p className="text-[10px] font-black text-[var(--text-dim)] uppercase ml-4 leading-none">Proces (użyj **pogrubienie**)</p>
               <textarea placeholder="Opis procesu produkcyjnego..." className={`${inputCls} h-64`} value={formRecipe.tech} onChange={e => setFormRecipe({ ...formRecipe, tech: e.target.value })} />
             </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-[var(--text-dim)] uppercase ml-4">Link do YouTube (opcjonalny)</p>
+              <input placeholder="https://youtube.com/..." className={inputCls} value={formRecipe.videoUrl || ''} onChange={e => setFormRecipe({ ...formRecipe, videoUrl: e.target.value })} />
+            </div>
             <div className="bg-[var(--bg)] p-6 rounded-[2.5rem] border-2 border-dashed border-[var(--border)] text-center min-h-[140px] flex items-center justify-center relative overflow-hidden text-[var(--text-dim)]">
               {formRecipe.imageUrl ? (
                 <>
@@ -127,17 +137,29 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave, recipeC
               <button onClick={() => setFormRecipe({ ...formRecipe, spices: [{ name: '', perKg: 0, unit: 'g' }, ...formRecipe.spices] })} className="p-2 bg-[var(--bg-input)] text-[var(--text)] rounded-lg shadow-lg"><Plus size={16} /></button>
             </div>
             {formRecipe.spices.map((s, i) => (
-              <div key={i} className="flex gap-2">
-                <input placeholder="Nazwa" className={`flex-1 ${smInputCls}`} value={s.name} onChange={e => updateSpice(i, 'name', e.target.value)} />
-                <input type="number" step="0.1" className={`w-24 text-center font-black ${smInputCls}`} value={s.perKg} onChange={e => updateSpice(i, 'perKg', e.target.value)} />
-                <select className={`w-20 text-center text-xs ${smInputCls}`} value={s.unit} onChange={e => updateSpice(i, 'unit', e.target.value)}>
-                  <option value="g">g</option>
-                  <option value="łyż.">łyż.</option>
-                  <option value="ml">ml</option>
-                  <option value="l">l</option>
-                  <option value="szt">szt</option>
+              <div key={i} className="flex flex-col gap-1.5">
+                <select
+                  className={`text-xs ${smInputCls}`}
+                  value=""
+                  onChange={e => { if (e.target.value) updateSpice(i, 'name', e.target.value); }}
+                >
+                  <option value="">Wybierz lub wpisz własną...</option>
+                  {POPULAR_SPICES.map(sp => <option key={sp} value={sp}>{sp}</option>)}
                 </select>
-                <button onClick={() => { const l = [...formRecipe.spices]; l.splice(i, 1); setFormRecipe({ ...formRecipe, spices: l }); }} className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
+                <div className="flex gap-2">
+                  <input placeholder="Nazwa" className={`flex-1 ${smInputCls}`} value={s.name} onChange={e => updateSpice(i, 'name', e.target.value)} />
+                  <input type="number" step="0.1" className={`w-24 text-center font-black ${smInputCls}`} value={s.perKg} onChange={e => updateSpice(i, 'perKg', e.target.value)} />
+                  <select className={`w-20 text-center text-xs ${smInputCls}`} value={s.unit} onChange={e => updateSpice(i, 'unit', e.target.value)}>
+                    <option value="g">g</option>
+                    <option value="łyż.">łyż.</option>
+                    <option value="ml">ml</option>
+                    <option value="l">l</option>
+                    <option value="szt">szt</option>
+                    <option value="ząbki">ząbki</option>
+                    <option value="kulki">kulki</option>
+                  </select>
+                  <button onClick={() => { const l = [...formRecipe.spices]; l.splice(i, 1); setFormRecipe({ ...formRecipe, spices: l }); }} className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
+                </div>
               </div>
             ))}
           </div>
