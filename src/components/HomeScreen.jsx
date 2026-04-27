@@ -24,7 +24,7 @@ const CALCULATORS = [
     hasBanner: true,
     banner: '/banner_piekarz.png',
     bannerTitle: 'Piekarski Mistrz',
-    bannerSub: 'Otwieramy wkrótce!',
+    bannerSub: 'Receptury piekarskie i zakwasy',
     logo: '/logo_piekarz.png',
     noGrayscale: true,
   },
