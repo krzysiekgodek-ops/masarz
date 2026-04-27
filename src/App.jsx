@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, setDoc, getDoc, getCountFromServer, onSnapshot, query, where, addDoc, serverTimestamp, updateDoc, deleteDoc, increment } from 'firebase/firestore';
 import { auth, db, SUPER_ROOT } from './firebase';
@@ -41,6 +41,7 @@ const App = () => {
   // ── Nawigacja ──────────────────────────────────────────────────────────────
   // tabs: 'home' | 'recipes' | 'my' | 'account' | 'calculator' | 'superadmin'
   const [activeTab, setActiveTab] = useState('home');
+  const hashNavigated = useRef(false);
   const [prevTab, setPrevTab]     = useState('recipes'); // skąd otwarto kalkulator
   const [selectedKey, setSelectedKey] = useState('');   // klucz wybranej receptury
   const [totalTarget, setTotalTarget] = useState(10);   // wsad w kg
@@ -52,6 +53,10 @@ const App = () => {
     else if (hash === '#moje') setActiveTab('my-recipes');
     else if (hash === '#konto') setActiveTab('account');
     else if (hash === '#home') setActiveTab('home');
+    if (hash) {
+      hashNavigated.current = true;
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }, []);
 
   // ── Modale ─────────────────────────────────────────────────────────────────
@@ -96,7 +101,7 @@ const App = () => {
         setUserProfile(profileData);
       } else {
         setUserProfile(null);
-        setActiveTab('home');
+        if (!hashNavigated.current) setActiveTab('home');
       }
     });
 
