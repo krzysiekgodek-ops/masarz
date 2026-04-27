@@ -20,7 +20,7 @@ const CALCULATORS = [
     name: 'Piekarski Mistrz',
     description: 'Domowe receptury pieczywa',
     active: false,
-    url: 'https://www.piekarz.ebra.pl',
+    url: 'https://piekarz.ebra.pl/#receptury',
     hasBanner: true,
     banner: '/banner_piekarz.png',
     bannerTitle: 'Piekarski Mistrz',

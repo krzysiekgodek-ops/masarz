@@ -45,6 +45,15 @@ const App = () => {
   const [selectedKey, setSelectedKey] = useState('');   // klucz wybranej receptury
   const [totalTarget, setTotalTarget] = useState(10);   // wsad w kg
 
+  // ── Obsługa URL hash przy starcie ─────────────────────────────────────────
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === '#receptury') setActiveTab('recipes');
+    else if (hash === '#moje') setActiveTab('my-recipes');
+    else if (hash === '#konto') setActiveTab('account');
+    else if (hash === '#home') setActiveTab('home');
+  }, []);
+
   // ── Modale ─────────────────────────────────────────────────────────────────
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
