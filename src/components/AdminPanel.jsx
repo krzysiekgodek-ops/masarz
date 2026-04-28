@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import DOMPurify from 'dompurify';
 import { collection, doc, addDoc, deleteDoc, updateDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import {
@@ -818,10 +819,17 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
               </div>
             )}
 
-            {previewRecipe.tech && (
+            {(previewRecipe.description || previewRecipe.tech) && (
               <div className="mb-5">
                 <p className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest mb-3">Opis technologiczny</p>
-                <p className="text-sm text-[var(--text)] leading-relaxed bg-[var(--bg)] border border-[var(--border)] p-4 rounded-2xl whitespace-pre-line">{previewRecipe.tech}</p>
+                {previewRecipe.description ? (
+                  <div
+                    className="recipe-desc text-sm text-[var(--text)] leading-relaxed bg-[var(--bg)] border border-[var(--border)] p-4 rounded-2xl"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewRecipe.description, { ADD_ATTR: ['style'] }) }}
+                  />
+                ) : (
+                  <p className="text-sm text-[var(--text)] leading-relaxed bg-[var(--bg)] border border-[var(--border)] p-4 rounded-2xl whitespace-pre-line">{previewRecipe.tech}</p>
+                )}
               </div>
             )}
 

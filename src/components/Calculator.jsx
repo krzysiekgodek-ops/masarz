@@ -146,16 +146,33 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
       )}
 
       {/* Opis technologiczny */}
-      {recipe.tech && (
+      {(recipe.description || recipe.tech) && (
         <div className="px-4 mt-6">
           <div className="p-5 bg-[var(--bg-card)] border-2 border-dashed border-[var(--border)] rounded-3xl">
             <h5 className="flex items-center gap-2 text-[10px] font-black uppercase text-[var(--text-dim)] mb-4 tracking-widest">
               <BookOpen size={13} /> Opis Technologiczny
             </h5>
-            <div
-              className="text-sm text-[var(--text)] leading-relaxed font-medium italic"
-              dangerouslySetInnerHTML={{ __html: formatTechText(recipe.tech) }}
-            />
+            {recipe.description ? (
+              <>
+                <style>{`
+                  .recipe-desc h1{font-size:1.25rem;font-weight:900;margin:.5rem 0 .25rem;text-transform:uppercase;letter-spacing:-.02em}
+                  .recipe-desc h2{font-size:1.05rem;font-weight:800;margin:.5rem 0 .25rem}
+                  .recipe-desc ul{list-style-type:disc;padding-left:1.25rem;margin:.25rem 0}
+                  .recipe-desc ol{list-style-type:decimal;padding-left:1.25rem;margin:.25rem 0}
+                  .recipe-desc li{margin-bottom:.125rem}
+                  .recipe-desc p{margin-bottom:.2rem}
+                `}</style>
+                <div
+                  className="recipe-desc text-sm text-[var(--text)] leading-relaxed font-medium"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(recipe.description, { ADD_ATTR: ['style'] }) }}
+                />
+              </>
+            ) : (
+              <div
+                className="text-sm text-[var(--text)] leading-relaxed font-medium italic"
+                dangerouslySetInnerHTML={{ __html: formatTechText(recipe.tech) }}
+              />
+            )}
           </div>
         </div>
       )}
@@ -218,7 +235,11 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
         </div>
         <div className="border-2 border-black p-8 rounded-2xl mb-10 bg-slate-50/50">
           <h4 className="text-xs font-black uppercase mb-4 flex items-center gap-2"><ChefHat size={14} /> Proces Technologiczny</h4>
-          <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formatTechText(recipe.tech) }} />
+          {recipe.description ? (
+            <div className="text-sm leading-relaxed recipe-desc-print" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(recipe.description, { ADD_ATTR: ['style'] }) }} />
+          ) : (
+            <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formatTechText(recipe.tech) }} />
+          )}
         </div>
         <div className="border-t-2 border-dashed border-slate-300 pt-6 text-center">
           <h4 className="text-[10px] font-black uppercase text-slate-400 mb-6 tracking-widest italic">Notatki z produkcji:</h4>

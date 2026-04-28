@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2, Save, Upload } from 'lucide-react';
 import { MYDEVIL_URL } from '../firebase';
+import RichTextEditor from './RichTextEditor';
 
 const EMPTY_RECIPE = {
   name: '', category: '',
   meats: [{ name: '', val: 0, grinding: '' }],
   spices: [{ name: '', perKg: 0, unit: 'g' }],
-  tech: '', imageUrl: '', videoUrl: ''
+  tech: '', description: '', imageUrl: '', videoUrl: ''
 };
 
 const POPULAR_SPICES = [
@@ -88,8 +89,11 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave, recipeC
               </select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-[var(--text-dim)] uppercase ml-4 leading-none">Proces (użyj **pogrubienie**)</p>
-              <textarea placeholder="Opis procesu produkcyjnego..." className={`${inputCls} h-64`} value={formRecipe.tech} onChange={e => setFormRecipe({ ...formRecipe, tech: e.target.value })} />
+              <p className="text-[10px] font-black text-[var(--text-dim)] uppercase ml-4 leading-none">Opis Procesu</p>
+              <RichTextEditor
+                value={formRecipe.description}
+                onChange={val => setFormRecipe(prev => ({ ...prev, description: val }))}
+              />
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-black text-[var(--text-dim)] uppercase ml-4">Link do YouTube (opcjonalny)</p>
