@@ -8,57 +8,25 @@ const CALCULATORS = [
   {
     id: 'masarski',
     name: 'Masarski Master',
-    description: 'Receptury mięsne i wędliniarskie',
-    active: true,
-    hasBanner: true,
-    banner: '/masarz-banner.jpg',
-    bannerTitle: 'Masarski Master',
-    bannerSub: 'Receptury mięsne',
+    description: 'Kalkulator receptur wędlin i mięs',
+    banner: '/masarz_banner.jpg',
+    logo: '/masarz_logo.png',
   },
   {
     id: 'piekarski',
     name: 'Piekarski Mistrz',
-    description: 'Domowe receptury pieczywa',
-    active: false,
-    url: 'https://www.piekarz.ebra.pl/#receptury',
-    hasBanner: true,
-    banner: '/banner_piekarz.png',
-    bannerTitle: 'Piekarski Mistrz',
-    bannerSub: 'Receptury piekarskie i zakwasy',
-    logo: '/logo_piekarz.png',
-    noGrayscale: true,
+    description: 'Receptury piekarskie i zakwasy',
+    banner: '/piekarz_baner.png',
+    logo: '/piekarz_logo.png',
+    url: 'https://www.piekarz.ebra.pl',
   },
   {
     id: 'nalewki',
-    name: 'Mistrz Nalewek',
+    name: 'Nalewkarz Master',
     description: 'Receptury nalewek i nastawów',
-    active: false,
-    hasBanner: true,
-    banner: '/nalewki.png',
-    bannerTitle: 'Mistrz Nalewek',
-    bannerSub: 'Otwieramy wkrótce!',
-  },
-  {
-    id: 'techniczny',
-    name: 'Kalkulator Techniczny',
-    description: 'Obliczenia technologiczne',
-    active: false,
-    icon: (
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[var(--text-dim)]">
-        <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'autoserwis',
-    name: 'Auto Serwis',
-    description: 'Kalkulator serwisowy',
-    active: false,
-    icon: (
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[var(--text-dim)]">
-        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-      </svg>
-    ),
+    banner: '/nalewki_baner.png',
+    logo: '/nalewki_logo.jpg',
+    url: 'https://www.nalewki.ebra.pl',
   },
 ];
 
@@ -67,7 +35,6 @@ const HomeScreen = ({ setActiveTab, ads }) => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
     catch { return []; }
   });
-  const [toast, setToast] = useState(false);
 
   const toggleFavorite = (id, e) => {
     e.stopPropagation();
@@ -79,13 +46,10 @@ const HomeScreen = ({ setActiveTab, ads }) => {
   };
 
   const handleCardClick = (calc) => {
-    if (calc.active) {
-      setActiveTab('recipes');
-    } else if (calc.url) {
-      window.open(calc.url, '_self');
+    if (calc.url) {
+      window.open(calc.url, '_blank');
     } else {
-      setToast(true);
-      setTimeout(() => setToast(false), 2500);
+      setActiveTab('calculator');
     }
   };
 
@@ -97,14 +61,6 @@ const HomeScreen = ({ setActiveTab, ads }) => {
 
   return (
     <div className="p-5 pt-6">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[var(--bg-input)] text-[var(--text)] text-xs font-bold px-5 py-2.5 rounded-full shadow-lg tracking-wide pointer-events-none">
-          Wkrótce dostępne
-        </div>
-      )}
-
-      {/* Banery reklamowe */}
       <AdBanner ads={ads} />
 
       <h2 className="text-3xl font-black uppercase italic tracking-tighter text-[var(--text)] leading-none mb-2">Kalkulatory</h2>
@@ -114,74 +70,40 @@ const HomeScreen = ({ setActiveTab, ads }) => {
         {sorted.map(calc => {
           const isFav = favorites.includes(calc.id);
           return (
-            <div key={calc.id} className="relative">
-              {/* Karta kalkulatora */}
-              <button
-                onClick={() => handleCardClick(calc)}
-                className={`w-full text-left bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border)] overflow-hidden transition-all ${
-                  calc.active ? 'shadow-xl hover:shadow-2xl group' : calc.noGrayscale ? 'shadow-xl hover:shadow-2xl' : 'opacity-60'
-                }`}
-              >
-                {calc.hasBanner ? (
-                  <div className="relative w-full overflow-hidden" style={{ height: '200px' }}>
-                    <img
-                      src={calc.banner}
-                      alt={calc.name}
-                      className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ${calc.active ? 'group-hover:scale-105' : calc.noGrayscale ? '' : 'grayscale'}`}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
-                    {(calc.active || calc.logo) && (
-                      <img
-                        src={calc.logo || '/logo.svg'}
-                        alt="Logo"
-                        className="absolute top-4 left-1/2 -translate-x-1/2 drop-shadow z-10"
-                        style={{ width: calc.logo ? 60 : 48, height: calc.logo ? 60 : 48, objectFit: 'contain' }}
-                      />
-                    )}
-                    <div className="absolute inset-0 flex flex-col justify-center px-7 gap-1">
-                      <p className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none drop-shadow">
-                        {calc.bannerTitle}
-                      </p>
-                      <p className="text-sm text-slate-300 font-medium">{calc.bannerSub}</p>
-                      <span
-                        className={`mt-3 self-start text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest ${
-                          calc.active || calc.url ? 'text-white' : 'bg-[var(--bg-input)] text-[var(--text-dim)]'
-                        }`}
-                        style={calc.active || calc.url ? { backgroundColor: calc.active ? '#DC2626' : '#c8860a' } : {}}
-                      >
-                        {calc.active || calc.url ? 'Otwórz' : 'Wkrótce'}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="h-28 bg-[var(--bg)] flex items-center justify-center grayscale">
-                      {calc.icon}
-                    </div>
-                    <div className="p-6 flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <h3 className="text-xl font-black uppercase italic tracking-tighter text-[var(--text)]">{calc.name}</h3>
-                        <p className="text-xs text-[var(--text-dim)] font-medium mt-1">{calc.description}</p>
-                      </div>
-                      <span className="shrink-0 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest bg-[var(--bg-input)] text-[var(--text-dim)]">
-                        Wkrótce
-                      </span>
-                    </div>
-                  </>
-                )}
-              </button>
-
-              {/* Przycisk serce — poza <button> karty, żeby nie triggerował kliknięcia */}
+            <div
+              key={calc.id}
+              className="relative overflow-hidden rounded-2xl cursor-pointer group hover:shadow-lg transition-shadow"
+              style={{ border: '1px solid var(--border)' }}
+              onClick={() => handleCardClick(calc)}
+            >
+              <div className="relative h-36 overflow-hidden">
+                <img
+                  src={calc.banner}
+                  alt={calc.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center gap-3">
+                <img src={calc.logo} alt="" className="h-10 w-10 object-contain" />
+                <div>
+                  <div className="text-white font-bold text-sm">{calc.name}</div>
+                  <div className="text-white/70 text-xs">{calc.description}</div>
+                </div>
+                <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">
+                  Aktywny
+                </span>
+              </div>
               <button
                 onClick={(e) => toggleFavorite(calc.id, e)}
                 aria-label={isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
-                className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-[var(--bg-card)]/90 backdrop-blur-sm shadow-md transition-transform active:scale-90 hover:scale-110"
+                className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-sm transition-transform active:scale-90 hover:scale-110"
               >
                 <Heart
                   size={18}
                   strokeWidth={2}
                   fill={isFav ? '#DC2626' : 'none'}
-                  stroke={isFav ? '#DC2626' : 'var(--text-dim)'}
+                  stroke={isFav ? '#DC2626' : 'white'}
                 />
               </button>
             </div>

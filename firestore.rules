@@ -38,6 +38,14 @@ service cloud.firestore {
     match /piekarz_categories/{catId} { allow read: if true; allow write: if isAdmin(); }
     match /piekarz_sourdough/{docId}  { allow read: if true; allow write: if isAdmin(); }
 
+    // NALEWKI
+    match /nalewki_recipes/{recipeId} {
+      allow read: if true;
+      allow create: if request.auth != null && (isAdmin() || canCreateRecipe());
+      allow update, delete: if request.auth != null && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+    match /nalewki_categories/{catId} { allow read: if true; allow write: if isAdmin(); }
+
     // USERS
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
