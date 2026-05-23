@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import DOMPurify from 'dompurify';
-import { ArrowLeft, Hash, Zap, BookOpen, Edit3, Printer, FileText, ChefHat } from 'lucide-react';
+import { ArrowLeft, Hash, Zap, BookOpen, Edit3, Printer, FileText, ChefHat, Trash2 } from 'lucide-react';
 
 const formatTechText = (t) => {
   if (!t || typeof t !== 'string') return '';
@@ -12,7 +12,7 @@ const formatTechText = (t) => {
   return DOMPurify.sanitize(html);
 };
 
-const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, onBack, onEditRecipe }) => {
+const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, onBack, onEditRecipe, onDeleteRecipe }) => {
   const calculations = useMemo(() => {
     if (!recipe) return { meats: [], spices: [] };
     return {
@@ -185,6 +185,14 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
             className="flex-1 py-4 bg-[var(--bg-input)] text-[var(--text)] rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
           >
             <Edit3 size={15} /> Edytuj
+          </button>
+        )}
+        {(recipe.ownerId === user?.uid || (recipe.ownerId === 'ADMIN' && userProfile?.isAdmin)) && (
+          <button
+            onClick={() => onDeleteRecipe(recipe)}
+            className="flex-1 py-4 bg-red-900/20 text-red-400 border border-red-900/30 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 active:scale-[0.97] transition-transform hover:bg-red-600 hover:text-white"
+          >
+            <Trash2 size={15} /> Usuń
           </button>
         )}
         <button

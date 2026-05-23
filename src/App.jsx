@@ -130,7 +130,7 @@ const App = () => {
       setRecipes(docs);
     });
     const unsubCats = onSnapshot(collection(db, 'categories'), snap => {
-      setCategories(snap.docs.map(d => d.data().name).sort());
+      setCategories(snap.docs.map(d => ({ id: d.id, name: d.data().name || '' })).sort((a, b) => a.name.localeCompare(b.name)));
     });
     return () => { unsubRecipes(); unsubCats(); };
   }, [user]);
@@ -211,6 +211,19 @@ const App = () => {
     }
   };
 
+  const handleDeleteRecipe = async (recipe) => {
+    if (!window.confirm(`Czy na pewno chcesz bezpowrotnie usunąć recepturę "${recipe.name}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'recipes', recipe.id));
+      if (recipe.ownerId !== 'ADMIN') {
+        const countUpdate = { recipeCount: increment(-1) };
+        if (userProfile?.plan === 'vip') countUpdate.vipRecipesCount = increment(-1);
+        await updateDoc(doc(db, 'users', user.uid), countUpdate);
+      }
+      setActiveTab(recipe.ownerId === 'ADMIN' ? 'recipes' : 'my');
+    } catch (e) { alert("Błąd usuwania: " + e.message); }
+  };
+
   const updatePrice = async (branch, planKey, newData) => {
     const newPlans = {
       ...plans,
@@ -268,7 +281,7 @@ const App = () => {
         {activeTab === 'recipes' && (
           <RecipeList
             recipes={adminRecipes}
-            categories={categories}
+            categories={categories.map(c => c.name)}
             ads={ads}
             user={user}
             userProfile={userProfile}
@@ -322,6 +335,7 @@ const App = () => {
             setTotalTarget={setTotalTarget}
             onBack={() => setActiveTab(prevTab)}
             onEditRecipe={openRecipeModal}
+            onDeleteRecipe={handleDeleteRecipe}
           />
         )}
 
@@ -357,7 +371,7 @@ const App = () => {
       {isRecipeModalOpen && (
         <RecipeModal
           user={user}
-          categories={categories}
+          categories={categories.map(c => c.name)}
           initialRecipe={recipeToEdit}
           onClose={() => setIsRecipeModalOpen(false)}
           onSave={handleSaveRecipe}

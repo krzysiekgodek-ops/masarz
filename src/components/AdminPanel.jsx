@@ -56,8 +56,8 @@ const StatCard = ({ icon: Icon, label, value, accent }) => (
 
 const EMPTY_AD = { title: '', imageUrl: '', targetUrl: '', startDate: '', endDate: '', active: true, calculators: [] };
 
-const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPlan, toggleAdmin, deleteUserAccount, onAddRecipe }) => {
-  const [adminSubTab, setAdminSubTab]       = useState('dashboard');
+const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPlan = () => {}, toggleAdmin = () => {}, deleteUserAccount = () => {}, onAddRecipe = () => {} }) => {
+  const [adminSubTab, setAdminSubTab] = useState('categories');
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [userRecipesMap, setUserRecipesMap] = useState({});
   const [previewRecipe, setPreviewRecipe]   = useState(null);
@@ -70,6 +70,11 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
   const [adForm, setAdForm]         = useState(EMPTY_AD);
   const [uploadingImg, setUploadingImg] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+
+  // Categories management state
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
 
   const userEmailMap = useMemo(() => {
     const m = {};
@@ -238,6 +243,37 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
     if (previewRecipe?.id === recipeId) setPreviewRecipe(p => ({ ...p, blocked: block }));
   };
 
+  // Categories actions
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return alert("Podaj nazwę kategorii!");
+    try {
+      const colRef = collection(db, 'categories') || {};
+      await addDoc(colRef, { name: newCategoryName.trim() });
+      setNewCategoryName('');
+    } catch (e) {
+      alert("Błąd dodawania kategorii: " + e.message);
+    }
+  };
+
+  const handleUpdateCategory = async (id, newName) => {
+    if (!newName.trim()) return alert("Nazwa kategorii nie może być pusta!");
+    try {
+      await updateDoc(doc(db, 'categories', id), { name: newName.trim() });
+      setEditingCategoryId(null);
+    } catch (e) {
+      alert("Błąd edycji kategorii: " + e.message);
+    }
+  };
+
+  const handleDeleteCategory = async (category) => {
+    if (!window.confirm(`Czy na pewno chcesz usunąć kategorię "${category.name}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'categories', category.id));
+    } catch (e) {
+      alert("Błąd usuwania kategorii: " + e.message);
+    }
+  };
+
   const exportUsersCSV = () => {
     const header = 'email,plan,createdAt';
     const rows = allUsers.map(u => `${u.email},${u.plan || 'free'},${formatDate(u.createdAt)}`);
@@ -253,6 +289,7 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'users',     label: 'Użytkownicy' },
+    { id: 'categories', label: 'Kategorie' },
     { id: 'ads',       label: 'Reklamy' },
   ];
 
@@ -761,6 +798,99 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── KATEGORIE ────────────────────────────────────────────────────────── */}
+      {adminSubTab === 'categories' && (
+        <div className="space-y-6">
+          {/* Formularz dodawania */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-[2.5rem] p-8 shadow-xl">
+            <h3 className="text-lg font-black uppercase text-[var(--text)] mb-6">
+              Dodaj nową kategorię
+            </h3>
+            <div className="flex gap-3">
+              <input
+                className={inputCls}
+                placeholder="Nazwa kategorii (np. Kiełbasy, Szynki...)"
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleAddCategory();
+                }}
+              />
+              <button
+                onClick={handleAddCategory}
+                className="flex items-center gap-2 px-6 py-3 bg-[#DC2626] text-white rounded-2xl text-xs font-black uppercase hover:bg-red-700 transition-all shrink-0 active:scale-[0.97]"
+              >
+                <Plus size={14} /> Dodaj
+              </button>
+            </div>
+          </div>
+
+          {/* Lista kategorii */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-[3rem] p-6 md:p-10 shadow-xl">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-6">Lista kategorii ({categories.length})</p>
+            {categories.length === 0 ? (
+              <p className="text-xs text-[var(--text-dim)] py-4 text-center font-bold uppercase">Brak kategorii w bazie</p>
+            ) : (
+              <div className="divide-y divide-[var(--border)]">
+                {categories.map(c => (
+                  <div key={c.id} className="flex items-center justify-between py-4">
+                    {editingCategoryId === c.id ? (
+                      <div className="flex items-center gap-2 flex-1 mr-4">
+                        <input
+                          className={inputCls}
+                          value={editingCategoryName}
+                          onChange={e => setEditingCategoryName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleUpdateCategory(c.id, editingCategoryName);
+                            if (e.key === 'Escape') setEditingCategoryId(null);
+                          }}
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleUpdateCategory(c.id, editingCategoryName)}
+                          className="flex items-center gap-1.5 px-4 py-2.5 bg-green-900/30 text-green-400 border border-green-900/30 rounded-xl text-xs font-black uppercase hover:bg-green-700 hover:text-white transition-all shrink-0 active:scale-[0.97]"
+                        >
+                          <Save size={14} /> Zapisz
+                        </button>
+                        <button
+                          onClick={() => setEditingCategoryId(null)}
+                          className="px-4 py-2.5 bg-[var(--bg-input)] text-[var(--text-dim)] rounded-xl text-xs font-black uppercase hover:opacity-70 transition-all shrink-0"
+                        >
+                          Anuluj
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="font-bold text-[var(--text)] text-sm">{c.name}</span>
+                        <div className="flex items-center gap-2 shrink-0 ml-4">
+                          <button
+                            onClick={() => {
+                              setEditingCategoryId(c.id);
+                              setEditingCategoryName(c.name);
+                            }}
+                            className="p-2.5 bg-[var(--bg-input)] text-[var(--text-dim)] rounded-xl hover:opacity-70 hover:text-[var(--text)] transition-all"
+                            title="Edytuj"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(c)}
+                            className="p-2.5 bg-red-900/20 text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-colors"
+                            title="Usuń"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
