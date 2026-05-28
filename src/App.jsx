@@ -120,6 +120,9 @@ const App = () => {
       } else {
         setUserProfile(null);
         if (!hashNavigated.current) setActiveTab('home');
+        // Zamknij modale wymagające logowania przy utracie sesji
+        setIsRecipeModalOpen(false);
+        setRecipeToEdit(null);
       }
     });
 

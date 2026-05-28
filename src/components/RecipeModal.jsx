@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Plus, Trash2, Save, Upload } from 'lucide-react';
 import { MYDEVIL_URL } from '../firebase';
 import RichTextEditor from './RichTextEditor';
@@ -19,6 +19,7 @@ const POPULAR_SPICES = [
 const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, onSave, recipeCount = 0, recipeLimit = Infinity }) => {
   const isNew = !initialRecipe?.id;
   const overLimit = isNew && recipeCount >= recipeLimit;
+
   const [formRecipe, setFormRecipe] = useState(() => {
     if (!initialRecipe) return EMPTY_RECIPE;
     return {
@@ -33,6 +34,32 @@ const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, on
     };
   });
   const [isUploading, setIsUploading] = useState(false);
+
+  // ── Wykrywanie niezapisanych zmian ─────────────────────────────────────────
+  const initialJsonRef = useRef(JSON.stringify(initialRecipe || EMPTY_RECIPE));
+  const isDirty = JSON.stringify(formRecipe) !== initialJsonRef.current;
+
+  // Ostrzeżenie przy próbie zamknięcia karty/odświeżenia z niezapisanymi zmianami
+  useEffect(() => {
+    const handler = (e) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  // ── Zamknięcie z potwierdzeniem ────────────────────────────────────────────
+  const handleCloseRequest = () => {
+    if (isDirty && !window.confirm('Masz niezapisane zmiany. Czy na pewno chcesz zamknąć?')) return;
+    onClose();
+  };
+
+  // ── Blokada Enter w inputach (zapobiega przypadkowemu kliknięciu przycisków) ─
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+      e.preventDefault();
+    }
+  };
 
   const handleMyDevilUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -69,10 +96,23 @@ const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, on
     <div
       className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl animate-in zoom-in-95 duration-200"
       style={{ background: 'var(--bg-overlay)' }}
+      onKeyDown={handleKeyDown}
     >
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-[4rem] w-full max-w-7xl max-h-[90vh] overflow-y-auto p-10 relative">
-        <button onClick={onClose} className="absolute top-8 right-8 p-2 bg-[var(--bg-input)] text-[var(--text-dim)] hover:text-[var(--text)] rounded-full transition-colors"><X /></button>
-        <h2 className="text-3xl font-black uppercase mb-10 italic text-left leading-none tracking-tighter text-[var(--text)]">Zarządzanie Recepturą</h2>
+
+        {/* X — zamknij z potwierdzeniem */}
+        <button
+          type="button"
+          onClick={handleCloseRequest}
+          className="absolute top-8 right-8 p-2 bg-[var(--bg-input)] text-[var(--text-dim)] hover:text-[var(--text)] rounded-full transition-colors"
+        >
+          <X />
+        </button>
+
+        <h2 className="text-3xl font-black uppercase mb-10 italic text-left leading-none tracking-tighter text-[var(--text)]">
+          Zarządzanie Recepturą
+          {isDirty && <span className="ml-3 text-sm font-bold text-amber-500 normal-case tracking-normal not-italic align-middle">● niezapisane zmiany</span>}
+        </h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 text-left text-[var(--text)]">
           {/* Lewa kolumna — metadane */}
@@ -103,7 +143,7 @@ const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, on
               {formRecipe.imageUrl ? (
                 <>
                   <img src={formRecipe.imageUrl} className="w-full h-32 object-cover rounded-2xl shadow-lg" alt="Podgląd" />
-                  <button onClick={() => setFormRecipe({ ...formRecipe, imageUrl: '' })} className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full shadow-lg"><X size={12} /></button>
+                  <button type="button" onClick={() => setFormRecipe({ ...formRecipe, imageUrl: '' })} className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full shadow-lg"><X size={12} /></button>
                 </>
               ) : (
                 <label className="cursor-pointer w-full">
@@ -150,7 +190,7 @@ const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, on
           <div className="space-y-6">
             <div className="flex justify-between items-center font-black uppercase text-[var(--text-dim)] ml-2 tracking-widest">
               Wprowadź Surowce (KG)
-              <button onClick={() => setFormRecipe({ ...formRecipe, meats: [...formRecipe.meats, { name: '', val: 0, grinding: '' }] })} className="p-2 bg-red-600 text-white rounded-lg shadow-lg"><Plus size={16} /></button>
+              <button type="button" onClick={() => setFormRecipe({ ...formRecipe, meats: [...formRecipe.meats, { name: '', val: 0, grinding: '' }] })} className="p-2 bg-red-600 text-white rounded-lg shadow-lg"><Plus size={16} /></button>
             </div>
             {formRecipe.meats.map((m, i) => (
               <div key={i} className="flex gap-2">
@@ -160,7 +200,7 @@ const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, on
                   <input type="number" className={`w-24 text-center font-black text-red-500 pr-6 ${smInputCls}`} value={m.val ?? m.percentage ?? ''} onChange={e => updateMeat(i, 'val', e.target.value)} />
                   <span className="absolute right-2 top-3.5 text-[8px] font-black text-[var(--text-dim)]">KG</span>
                 </div>
-                <button onClick={() => { const l = [...formRecipe.meats]; l.splice(i, 1); setFormRecipe({ ...formRecipe, meats: l }); }} className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
+                <button type="button" onClick={() => { const l = [...formRecipe.meats]; l.splice(i, 1); setFormRecipe({ ...formRecipe, meats: l }); }} className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
               </div>
             ))}
             <div className="bg-[var(--bg)] border border-[var(--border)] p-4 rounded-2xl text-[10px] font-black uppercase text-[var(--text-dim)] flex justify-between">
@@ -169,7 +209,7 @@ const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, on
 
             <div className="flex justify-between items-center font-black uppercase text-[var(--text-dim)] ml-2 tracking-widest mt-6">
               Przyprawy (g/kg)
-              <button onClick={() => setFormRecipe({ ...formRecipe, spices: [{ name: '', perKg: 0, unit: 'g' }, ...formRecipe.spices] })} className="p-2 bg-[var(--bg-input)] text-[var(--text)] rounded-lg shadow-lg"><Plus size={16} /></button>
+              <button type="button" onClick={() => setFormRecipe({ ...formRecipe, spices: [{ name: '', perKg: 0, unit: 'g' }, ...formRecipe.spices] })} className="p-2 bg-[var(--bg-input)] text-[var(--text)] rounded-lg shadow-lg"><Plus size={16} /></button>
             </div>
             {formRecipe.spices.map((s, i) => (
               <div key={i} className="flex flex-col gap-1.5">
@@ -193,7 +233,7 @@ const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, on
                     <option value="ząbki">ząbki</option>
                     <option value="kulki">kulki</option>
                   </select>
-                  <button onClick={() => { const l = [...formRecipe.spices]; l.splice(i, 1); setFormRecipe({ ...formRecipe, spices: l }); }} className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
+                  <button type="button" onClick={() => { const l = [...formRecipe.spices]; l.splice(i, 1); setFormRecipe({ ...formRecipe, spices: l }); }} className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
                 </div>
               </div>
             ))}
@@ -206,6 +246,7 @@ const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, on
           </p>
         )}
         <button
+          type="button"
           onClick={() => !overLimit && onSave(formRecipe)}
           disabled={overLimit}
           className={`w-full mt-4 py-6 rounded-3xl font-black uppercase tracking-widest shadow-2xl transition-all ${
