@@ -12,7 +12,7 @@ const formatTechText = (t) => {
   return DOMPurify.sanitize(html);
 };
 
-const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, onBack, onEditRecipe, onDeleteRecipe }) => {
+const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, onBack, onEditRecipe, onDeleteRecipe, onRequestLogin }) => {
   const calculations = useMemo(() => {
     if (!recipe) return { meats: [], spices: [] };
     return {
@@ -196,7 +196,7 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
           </button>
         )}
         <button
-          onClick={() => window.print()}
+          onClick={() => user ? window.print() : onRequestLogin?.()}
           className="flex-1 py-4 bg-[#DC2626] text-white rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-900/30 active:scale-[0.97] transition-transform"
         >
           <Printer size={15} /> Drukuj

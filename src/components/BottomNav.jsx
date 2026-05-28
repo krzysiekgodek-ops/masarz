@@ -8,10 +8,10 @@ const TABS = [
   { id: 'account', label: 'Konto',     Icon: User      },
 ];
 
-const BottomNav = ({ activeTab, setActiveTab, user, setIsAuthModalOpen }) => {
+const BottomNav = ({ activeTab, setActiveTab, user, onShowRegisterPrompt }) => {
   const handleTab = (id) => {
-    if ((id === 'my' || id === 'account') && !user) {
-      setIsAuthModalOpen(true);
+    if (id === 'account' && !user) {
+      onShowRegisterPrompt?.();
       return;
     }
     setActiveTab(id);

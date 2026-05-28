@@ -6,8 +6,8 @@ import {
 import { X } from 'lucide-react';
 import { auth } from '../firebase';
 
-const AuthModal = ({ onClose }) => {
-  const [authMode, setAuthMode] = useState('login');
+const AuthModal = ({ onClose, initialMode = 'login' }) => {
+  const [authMode, setAuthMode] = useState(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 

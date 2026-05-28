@@ -7,7 +7,7 @@ const EMPTY_RECIPE = {
   name: '', category: '',
   meats: [{ name: '', val: 0, grinding: '' }],
   spices: [{ name: '', perKg: 0, unit: 'g' }],
-  tech: '', description: '', imageUrl: '', videoUrl: ''
+  tech: '', description: '', imageUrl: '', videoUrl: '', isPublic: false
 };
 
 const POPULAR_SPICES = [
@@ -16,7 +16,7 @@ const POPULAR_SPICES = [
   'Czosnek świeży', 'Czosnek suszony', 'Majeranek', 'Kolendra',
 ];
 
-const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave, recipeCount = 0, recipeLimit = Infinity }) => {
+const RecipeModal = ({ user, userProfile, categories, initialRecipe, onClose, onSave, recipeCount = 0, recipeLimit = Infinity }) => {
   const isNew = !initialRecipe?.id;
   const overLimit = isNew && recipeCount >= recipeLimit;
   const [formRecipe, setFormRecipe] = useState(() => {
@@ -113,6 +113,37 @@ const RecipeModal = ({ user, categories, initialRecipe, onClose, onSave, recipeC
                 </label>
               )}
             </div>
+
+            {/* Widoczność dla gości — tylko admin */}
+            {userProfile?.isAdmin && (
+              <button
+                type="button"
+                onClick={() => setFormRecipe(prev => ({ ...prev, isPublic: !prev.isPublic }))}
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                  formRecipe.isPublic
+                    ? 'border-green-500/50 bg-green-500/10'
+                    : 'border-[var(--border)] bg-[var(--bg)]'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-none transition-all ${
+                  formRecipe.isPublic ? 'bg-green-500 border-green-500' : 'border-[var(--text-dim)]'
+                }`}>
+                  {formRecipe.isPublic && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-black text-[var(--text)] uppercase tracking-wide leading-none">
+                    Publiczna — widoczna bez logowania
+                  </p>
+                  <p className="text-[10px] text-[var(--text-dim)] mt-0.5">
+                    {formRecipe.isPublic ? 'Goście mogą otworzyć tę recepturę' : 'Wymaga rejestracji lub logowania'}
+                  </p>
+                </div>
+              </button>
+            )}
           </div>
 
           {/* Prawa kolumna — składniki */}

@@ -7,6 +7,7 @@ import useTheme from './hooks/useTheme';
 import Header     from './components/Header';
 import BottomNav  from './components/BottomNav';
 import AuthModal  from './components/AuthModal';
+import RegisterPromptModal from './components/RegisterPromptModal';
 import RecipeModal from './components/RecipeModal';
 import RecipeList from './components/RecipeList';
 import Calculator from './components/Calculator';
@@ -61,8 +62,16 @@ const App = () => {
 
   // ── Modale ─────────────────────────────────────────────────────────────────
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState('login');
+  const [isRegisterPromptOpen, setIsRegisterPromptOpen] = useState(false);
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
   const [recipeToEdit, setRecipeToEdit] = useState(null);
+
+  const openAuthModal = (mode = 'login') => {
+    setAuthInitialMode(mode);
+    setIsRegisterPromptOpen(false);
+    setIsAuthModalOpen(true);
+  };
 
   // ── Firebase: auth + pricing ───────────────────────────────────────────────
   useEffect(() => {
@@ -155,6 +164,7 @@ const App = () => {
 
   // ── Modal receptury ────────────────────────────────────────────────────────
   const openRecipeModal = (recipe = null) => {
+    if (!user) { setIsRegisterPromptOpen(true); return; }
     setRecipeToEdit(recipe);
     setIsRecipeModalOpen(true);
   };
@@ -289,23 +299,42 @@ const App = () => {
             onSelectRecipe={(r) => handleSelectRecipe(r, 'recipes')}
             onOpenRecipeModal={openRecipeModal}
             onToggleFavorite={toggleFavorite}
+            onShowRegisterPrompt={() => setIsRegisterPromptOpen(true)}
           />
         )}
 
         {/* MOJE — własne receptury + ulubione */}
-        {activeTab === 'my' && userProfile && (
-          <ClientPanel
-            user={user}
-            userProfile={userProfile}
-            myRecipes={myRecipes}
-            favoriteRecipes={favoriteRecipes}
-            favoriteIds={favoriteIds}
-            plans={plans}
-            onSelectRecipe={(r) => handleSelectRecipe(r, 'my')}
-            onOpenRecipeModal={openRecipeModal}
-            onToggleFavorite={toggleFavorite}
-            setActiveTab={setActiveTab}
-          />
+        {activeTab === 'my' && (
+          userProfile
+            ? <ClientPanel
+                user={user}
+                userProfile={userProfile}
+                myRecipes={myRecipes}
+                favoriteRecipes={favoriteRecipes}
+                favoriteIds={favoriteIds}
+                plans={plans}
+                onSelectRecipe={(r) => handleSelectRecipe(r, 'my')}
+                onOpenRecipeModal={openRecipeModal}
+                onToggleFavorite={toggleFavorite}
+                setActiveTab={setActiveTab}
+              />
+            : <div className="flex flex-col items-center justify-center py-28 gap-5 px-8">
+                <div className="w-16 h-16 bg-red-600/10 rounded-2xl flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-500">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="font-black text-[var(--text)] uppercase tracking-tight text-lg leading-tight">Twoje receptury</p>
+                  <p className="text-[var(--text-dim)] text-sm font-bold mt-1">Zaloguj się, żeby zobaczyć<br/>swoje przepisy i ulubione</p>
+                </div>
+                <button
+                  onClick={() => setIsRegisterPromptOpen(true)}
+                  className="px-8 py-3.5 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-red-900/30 active:scale-95 transition-all"
+                >
+                  Zaloguj się / Zarejestruj
+                </button>
+              </div>
         )}
 
         {/* KONTO */}
@@ -336,6 +365,7 @@ const App = () => {
             onBack={() => setActiveTab(prevTab)}
             onEditRecipe={openRecipeModal}
             onDeleteRecipe={handleDeleteRecipe}
+            onRequestLogin={() => setIsRegisterPromptOpen(true)}
           />
         )}
 
@@ -360,17 +390,29 @@ const App = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           user={user}
-          setIsAuthModalOpen={setIsAuthModalOpen}
+          onShowRegisterPrompt={() => setIsRegisterPromptOpen(true)}
         />
       )}
 
       {isAuthModalOpen && (
-        <AuthModal onClose={() => setIsAuthModalOpen(false)} />
+        <AuthModal
+          onClose={() => setIsAuthModalOpen(false)}
+          initialMode={authInitialMode}
+        />
+      )}
+
+      {isRegisterPromptOpen && (
+        <RegisterPromptModal
+          onClose={() => setIsRegisterPromptOpen(false)}
+          onRegister={() => openAuthModal('register')}
+          onLogin={() => openAuthModal('login')}
+        />
       )}
 
       {isRecipeModalOpen && (
         <RecipeModal
           user={user}
+          userProfile={userProfile}
           categories={categories.map(c => c.name)}
           initialRecipe={recipeToEdit}
           onClose={() => setIsRecipeModalOpen(false)}
