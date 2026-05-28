@@ -14,6 +14,9 @@ import Calculator from './components/Calculator';
 import ClientPanel from './components/ClientPanel';
 import AdminPanel  from './components/AdminPanel';
 import HomeScreen  from './components/HomeScreen';
+import TipsList    from './components/TipsList';
+import TipModal    from './components/TipModal';
+import TipEditModal from './components/TipEditModal';
 
 const DEFAULT_PLANS = {
   food: {
@@ -38,6 +41,7 @@ const App = () => {
   const [categories, setCategories] = useState([]);
   const [ads, setAds] = useState([]);
   const [plans, setPlans] = useState(null);
+  const [tips, setTips] = useState([]);
 
   // ── Nawigacja ──────────────────────────────────────────────────────────────
   // tabs: 'home' | 'recipes' | 'my' | 'account' | 'calculator' | 'superadmin'
@@ -59,6 +63,11 @@ const App = () => {
       window.history.replaceState(null, '', window.location.pathname);
     }
   }, []);
+
+  // ── Porady: stan widoku i modale ───────────────────────────────────────────
+  const [selectedTip, setSelectedTip] = useState(null);
+  const [isTipEditOpen, setIsTipEditOpen] = useState(false);
+  const [tipToEdit, setTipToEdit] = useState(null);
 
   // ── Modale ─────────────────────────────────────────────────────────────────
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -143,6 +152,43 @@ const App = () => {
     });
     return () => { unsubRecipes(); unsubCats(); };
   }, [user]);
+
+  // ── Firebase: porady ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const unsubTips = onSnapshot(
+      query(collection(db, 'tips')),
+      snap => setTips(snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)))
+    );
+    return () => unsubTips();
+  }, []);
+
+  // ── CRUD porad ─────────────────────────────────────────────────────────────
+  const handleSaveTip = async (form) => {
+    try {
+      if (form.id) {
+        await updateDoc(doc(db, 'tips', form.id), { ...form, updatedAt: serverTimestamp() });
+      } else {
+        await addDoc(collection(db, 'tips'), { ...form, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      }
+      setIsTipEditOpen(false);
+      setTipToEdit(null);
+      // Odśwież wybrany tip jeśli był edytowany
+      if (form.id && selectedTip?.id === form.id) setSelectedTip(prev => ({ ...prev, ...form }));
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleDeleteTip = async (tip) => {
+    if (!window.confirm(`Czy na pewno usunąć poradę "${tip.title}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'tips', tip.id));
+      setSelectedTip(null);
+    } catch (e) { alert('Błąd usuwania: ' + e.message); }
+  };
+
+  const openTipEdit = (tip = null) => {
+    setTipToEdit(tip);
+    setIsTipEditOpen(true);
+  };
 
   // ── Wybór receptury — zapamiętuje źródłową zakładkę, przechodzi do kalkulatora
   const handleSelectRecipe = (recipe, sourceTab) => {
@@ -287,6 +333,25 @@ const App = () => {
           <HomeScreen setActiveTab={setActiveTab} ads={ads} />
         )}
 
+        {/* PORADY */}
+        {activeTab === 'tips' && !selectedTip && (
+          <TipsList
+            tips={tips}
+            userProfile={userProfile}
+            onSelectTip={setSelectedTip}
+            onAddTip={() => openTipEdit(null)}
+          />
+        )}
+        {activeTab === 'tips' && selectedTip && (
+          <TipModal
+            tip={selectedTip}
+            userProfile={userProfile}
+            onBack={() => setSelectedTip(null)}
+            onEdit={(tip) => openTipEdit(tip)}
+            onDelete={handleDeleteTip}
+          />
+        )}
+
         {/* RECEPTURY — tylko admin recipes */}
         {activeTab === 'recipes' && (
           <RecipeList
@@ -384,8 +449,8 @@ const App = () => {
         )}
       </main>
 
-      {/* Dolna nawigacja — ukryta w superadmin i w kalkulatorze */}
-      {activeTab !== 'superadmin' && activeTab !== 'calculator' && (
+      {/* Dolna nawigacja — ukryta w superadmin, kalkulatorze i widoku porady */}
+      {activeTab !== 'superadmin' && activeTab !== 'calculator' && !(activeTab === 'tips' && selectedTip) && (
         <BottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -406,6 +471,15 @@ const App = () => {
           onClose={() => setIsRegisterPromptOpen(false)}
           onRegister={() => openAuthModal('register')}
           onLogin={() => openAuthModal('login')}
+        />
+      )}
+
+      {isTipEditOpen && (
+        <TipEditModal
+          user={user}
+          initialTip={tipToEdit}
+          onClose={() => { setIsTipEditOpen(false); setTipToEdit(null); }}
+          onSave={handleSaveTip}
         />
       )}
 

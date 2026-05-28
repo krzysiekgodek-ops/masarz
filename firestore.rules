@@ -46,6 +46,9 @@ service cloud.firestore {
     }
     match /nalewki_categories/{catId} { allow read: if true; allow write: if isAdmin(); }
 
+    // PORADY
+    match /tips/{tipId} { allow read: if true; allow write: if isAdmin(); }
+
     // USERS
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());

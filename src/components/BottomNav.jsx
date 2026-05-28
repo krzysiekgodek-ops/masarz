@@ -1,11 +1,12 @@
 import React from 'react';
-import { Home, BookOpen, Heart, User } from 'lucide-react';
+import { Home, BookOpen, Heart, User, Lightbulb } from 'lucide-react';
 
 const TABS = [
-  { id: 'home',    label: 'Home',      Icon: Home     },
-  { id: 'recipes', label: 'Receptury', Icon: BookOpen  },
-  { id: 'my',      label: 'Moje',      Icon: Heart     },
-  { id: 'account', label: 'Konto',     Icon: User      },
+  { id: 'home',    label: 'Home',     Icon: Home      },
+  { id: 'recipes', label: 'Receptury',Icon: BookOpen  },
+  { id: 'tips',    label: 'Porady',   Icon: Lightbulb },
+  { id: 'my',      label: 'Moje',     Icon: Heart     },
+  { id: 'account', label: 'Konto',    Icon: User      },
 ];
 
 const BottomNav = ({ activeTab, setActiveTab, user, onShowRegisterPrompt }) => {
@@ -34,11 +35,11 @@ const BottomNav = ({ activeTab, setActiveTab, user, onShowRegisterPrompt }) => {
               }`}
             >
               <Icon
-                size={22}
+                size={20}
                 strokeWidth={active ? 2.5 : 1.5}
                 fill={active && id === 'my' ? 'currentColor' : 'none'}
               />
-              <span className={`text-[9px] font-black uppercase tracking-wider ${active ? 'text-red-600' : 'text-[var(--text-dim)]'}`}>
+              <span className={`text-[8px] font-black uppercase tracking-wider ${active ? 'text-red-600' : 'text-[var(--text-dim)]'}`}>
                 {label}
               </span>
             </button>

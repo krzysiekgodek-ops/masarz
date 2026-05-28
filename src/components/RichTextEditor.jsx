@@ -16,7 +16,7 @@ const EDITOR_STYLES = `
     min-height: 160px;
     padding: 14px 16px;
     outline: none;
-    color: #f0ebe0;
+    color: var(--text);
     font-size: 0.875rem;
     line-height: 1.7;
   }
@@ -26,12 +26,14 @@ const EDITOR_STYLES = `
     margin: 0.75rem 0 0.375rem;
     text-transform: uppercase;
     letter-spacing: -0.02em;
+    color: var(--text);
   }
   .tiptap-editor .ProseMirror h2 {
     font-size: 1.1rem;
     font-weight: 800;
     margin: 0.625rem 0 0.25rem;
     letter-spacing: -0.01em;
+    color: var(--text);
   }
   .tiptap-editor .ProseMirror p { margin-bottom: 0.25rem; }
   .tiptap-editor .ProseMirror ul {
@@ -46,7 +48,7 @@ const EDITOR_STYLES = `
   }
   .tiptap-editor .ProseMirror li { margin-bottom: 0.125rem; }
   .tiptap-editor .ProseMirror > p:first-child.is-empty::before {
-    content: 'Opis procesu produkcyjnego...';
+    content: attr(data-placeholder);
     color: #6b6152;
     float: left;
     height: 0;
@@ -71,7 +73,7 @@ const Btn = ({ onClick, active, title, children }) => (
 
 const Sep = () => <div className="w-px h-5 bg-[#3a3226] mx-0.5 self-center" />;
 
-const RichTextEditor = ({ value, onChange }) => {
+const RichTextEditor = ({ value, onChange, placeholder = 'Opis procesu produkcyjnego...' }) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -82,6 +84,9 @@ const RichTextEditor = ({ value, onChange }) => {
     ],
     content: value || '',
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    editorProps: {
+      attributes: { 'data-placeholder': placeholder },
+    },
   });
 
   if (!editor) return null;
