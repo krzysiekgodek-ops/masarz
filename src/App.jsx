@@ -55,7 +55,7 @@ const App = () => {
   useEffect(() => {
     const hash = window.location.hash;
     if (hash === '#receptury') setActiveTab('recipes');
-    else if (hash === '#moje') setActiveTab('my-recipes');
+    else if (hash === '#moje') setActiveTab('my');
     else if (hash === '#konto') setActiveTab('account');
     else if (hash === '#home') setActiveTab('home');
     if (hash) {
@@ -237,7 +237,7 @@ const App = () => {
           perKg: Number(s.perKg ?? 0)
         })),
         updatedAt: serverTimestamp(),
-        ownerId: userProfile?.isAdmin ? 'ADMIN' : user.uid
+        ownerId: formRecipe.id ? (formRecipe.ownerId ?? (userProfile?.isAdmin ? 'ADMIN' : user.uid)) : (userProfile?.isAdmin ? 'ADMIN' : user.uid)
       };
       if (formRecipe.id) {
         await updateDoc(doc(db, 'recipes', formRecipe.id), payload);
@@ -276,8 +276,9 @@ const App = () => {
       await deleteDoc(doc(db, 'recipes', recipe.id));
       if (recipe.ownerId !== 'ADMIN') {
         const countUpdate = { recipeCount: increment(-1) };
-        if (userProfile?.plan === 'vip') countUpdate.vipRecipesCount = increment(-1);
-        await updateDoc(doc(db, 'users', user.uid), countUpdate);
+        const ownerProfile = allUsers.find(u => u.id === recipe.ownerId) || (recipe.ownerId === user.uid ? userProfile : null);
+        if (ownerProfile?.plan === 'vip') countUpdate.vipRecipesCount = increment(-1);
+        await updateDoc(doc(db, 'users', recipe.ownerId), countUpdate);
       }
       setActiveTab(recipe.ownerId === 'ADMIN' ? 'recipes' : 'my');
     } catch (e) { alert("Błąd usuwania: " + e.message); }
@@ -328,7 +329,7 @@ const App = () => {
 
       {/* Główna treść — padding-bottom dla bottom nav */}
       <main
-        className="max-w-2xl mx-auto"
+        className="max-w-5xl mx-auto"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)' }}
       >
         {/* HOME */}
@@ -448,6 +449,7 @@ const App = () => {
             toggleAdmin={toggleAdmin}
             deleteUserAccount={deleteUserAccount}
             onAddRecipe={() => openRecipeModal(null)}
+            onEditRecipe={(recipe) => openRecipeModal(recipe)}
           />
         )}
       </main>

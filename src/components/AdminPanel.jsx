@@ -56,7 +56,7 @@ const StatCard = ({ icon: Icon, label, value, accent }) => (
 
 const EMPTY_AD = { title: '', imageUrl: '', targetUrl: '', startDate: '', endDate: '', active: true, calculators: [] };
 
-const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPlan = () => {}, toggleAdmin = () => {}, deleteUserAccount = () => {}, onAddRecipe = () => {} }) => {
+const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPlan = () => {}, toggleAdmin = () => {}, deleteUserAccount = () => {}, onAddRecipe = () => {}, onEditRecipe = () => {} }) => {
   const [adminSubTab, setAdminSubTab] = useState('categories');
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [userRecipesMap, setUserRecipesMap] = useState({});
@@ -351,10 +351,16 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
                         <p className="font-bold text-sm text-[var(--text)] truncate">{r.name}</p>
                         <p className="text-[10px] text-[var(--text-dim)]">{userEmailMap[r.ownerId] || r.ownerId}{formatDate(r.updatedAt) ? ` · ${formatDate(r.updatedAt)}` : ''}</p>
                       </div>
-                      <button onClick={() => handleBlockRecipe(r.id, true)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-red-900/20 text-red-400 rounded-xl text-[9px] font-black uppercase hover:bg-red-600 hover:text-white transition-all shrink-0">
-                        <Lock size={10} /> Zablokuj
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button onClick={() => setPreviewRecipe(r)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-input)] text-[var(--text-dim)] rounded-xl text-[9px] font-black uppercase hover:opacity-70 transition-all">
+                          <Eye size={10} /> Podgląd
+                        </button>
+                        <button onClick={() => handleBlockRecipe(r.id, true)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-red-900/20 text-red-400 rounded-xl text-[9px] font-black uppercase hover:bg-red-600 hover:text-white transition-all">
+                          <Lock size={10} /> Zablokuj
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -527,6 +533,10 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
                                   <button onClick={() => setPreviewRecipe(r)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-input)] text-[var(--text-dim)] rounded-xl text-[10px] font-black uppercase hover:opacity-70 transition-all">
                                     <Eye size={11} /> Podgląd
+                                  </button>
+                                  <button onClick={() => onEditRecipe(r)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-input)] text-[var(--text-dim)] rounded-xl text-[10px] font-black uppercase hover:opacity-70 transition-all">
+                                    <Edit2 size={11} /> Edytuj
                                   </button>
                                   {r.blocked ? (
                                     <button onClick={() => handleBlockRecipe(r.id, false)}
@@ -963,7 +973,13 @@ const AdminPanel = ({ allUsers, categories, ads, allRecipes = [], updatePlayerPl
               </div>
             )}
 
-            <div className="pt-5 border-t border-[var(--border)]">
+            <div className="pt-5 border-t border-[var(--border)] flex flex-col gap-2">
+              <button
+                onClick={() => { setPreviewRecipe(null); onEditRecipe(previewRecipe); }}
+                className="w-full py-3 bg-[var(--bg-input)] text-[var(--text)] rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:opacity-80 transition-all border border-[var(--border)]"
+              >
+                <Edit2 size={14} /> Edytuj recepturę
+              </button>
               {previewRecipe.blocked ? (
                 <button onClick={() => handleBlockRecipe(previewRecipe.id, false)}
                   className="w-full py-3 bg-green-600 text-white rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-green-700 transition-all">

@@ -34,7 +34,7 @@ const RecipeList = ({
       <AdBanner ads={ads} calculatorId="masarz" />
 
       {/* Filtry kategorii */}
-      <div className="flex gap-2 px-4 pt-4 pb-2 overflow-x-auto scrollbar-hide">
+      <div className="flex flex-wrap gap-2 px-4 pt-4 pb-2">
         {['Wszystkie', ...categories].map(c => (
           <button
             key={c}
@@ -51,7 +51,7 @@ const RecipeList = ({
       </div>
 
       {/* Karty receptur */}
-      <div className="px-4 pb-4 grid grid-cols-2 gap-2">
+      <div className="px-4 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {filtered.map(r => {
           const isFav = favoriteIds.includes(r.id);
           const isLocked = !user && !r.isPublic;

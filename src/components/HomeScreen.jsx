@@ -61,7 +61,7 @@ const HomeScreen = ({ setActiveTab, ads }) => {
   });
 
   return (
-    <div className="p-5 pt-6">
+    <div className="p-5 pt-6 max-w-2xl mx-auto">
       <AdBanner ads={ads} />
 
       <h2 className="text-3xl font-black uppercase italic tracking-tighter text-[var(--text)] leading-none mb-2">Kalkulatory</h2>

@@ -40,7 +40,7 @@ const Calculator = ({ user, userProfile, recipe, totalTarget, setTotalTarget, on
 
   /* ── Widok kalkulatora ──────────────────────────────── */
   return (
-    <div>
+    <div className="max-w-2xl mx-auto">
 
       <div className="no-print">
 
