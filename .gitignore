@@ -88,3 +88,9 @@ skills-lock.json
 
 # Stripe & Firebase secrets
 public/webhook_config.php
+
+# folders
+secrets/
+.claude/
+.agents/
+
